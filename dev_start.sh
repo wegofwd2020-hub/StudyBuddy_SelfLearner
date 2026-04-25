@@ -12,8 +12,8 @@ cmd="${1:-up}"
 _wait_for_api() {
   echo "→ Waiting for /healthz..."
   for i in {1..30}; do
-    if curl -fs http://localhost:8000/healthz >/dev/null 2>&1; then
-      echo "✓ API healthy at http://localhost:8000"
+    if curl -fs http://localhost:8001/healthz >/dev/null 2>&1; then
+      echo "✓ API healthy at http://localhost:8001"
       return 0
     fi
     sleep 1
@@ -68,9 +68,9 @@ case "$cmd" in
     echo "┌──────────────────────────────────────────────────────────────┐"
     echo "│  StudyBuddy Q — Smoke Test Ready                            │"
     echo "│                                                              │"
-    printf "│  Backend:  http://localhost:8000           %-16s│\n" ""
-    printf "│  API docs: http://localhost:8000/docs      %-16s│\n" ""
-    printf "│  Readyz:   http://localhost:8000/readyz    %-16s│\n" ""
+    printf "│  Backend:  http://localhost:8001           %-16s│\n" ""
+    printf "│  API docs: http://localhost:8001/docs      %-16s│\n" ""
+    printf "│  Readyz:   http://localhost:8001/readyz    %-16s│\n" ""
     printf "│  Mobile →  %-50s│\n" "$API_URL"
     echo "│                                                              │"
     echo "│  MVP smoke checklist (docs/MVP_v1.md):                      │"
