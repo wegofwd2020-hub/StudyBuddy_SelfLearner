@@ -1,0 +1,73 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# ── Secrets — never commit real env files ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+secrets.json
+*.pem
+*.key
+
+# ── BYOK safety — defence-in-depth ────────────────────────────────────────────
+# Block any file that looks like it could contain a leaked Anthropic key.
+# The CI gate (test_no_key_in_logs.py) is the primary defence; this is belt-and-braces.
+*sk-ant*
+
+# ── Database ──────────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── React Native / Expo ───────────────────────────────────────────────────────
+mobile/node_modules/
+mobile/.expo/
+mobile/.expo-shared/
+mobile/dist/
+mobile/web-build/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/ios/build/
+mobile/ios/Pods/
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.mobileprovision
+mobile/*.orig.*
+mobile/.metro-health-check*
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+.docker-data/
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log
+yarn-error.log
