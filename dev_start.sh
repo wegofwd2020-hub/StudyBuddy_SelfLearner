@@ -80,13 +80,21 @@ case "$cmd" in
     echo "│    4. Kill + reopen app              → last lesson loads    │"
     echo "│    5. grep -i 'sk-ant' backend/logs/ → zero results        │"
     echo "│                                                              │"
-    echo "│  Starting Expo now (Ctrl+C stops the emulator only;         │"
-    echo "│  run './dev_start.sh stop' to tear down the backend).       │"
+    echo "│  Connect a device (choose one):                              │"
+    echo "│    A) Expo Go on Android phone — scan the QR code below     │"
+    echo "│       (phone + this machine must be on the same WiFi)       │"
+    echo "│    B) Android emulator — press 'a' in Metro once it starts  │"
+    echo "│       (requires Android Studio + SDK installed first)       │"
+    echo "│                                                              │"
+    echo "│  Ctrl+C stops Metro only; backend keeps running.            │"
+    echo "│  './dev_start.sh stop' tears down Redis + API.              │"
     echo "└──────────────────────────────────────────────────────────────┘"
     echo ""
 
-    # ── 4. Start Expo (interactive — stays in foreground) ─────────────────────
-    (cd mobile && npx expo start --android)
+    # ── 4. Start Metro (interactive — stays in foreground) ────────────────────
+    # No --android flag: lets the user choose Expo Go (QR scan) or emulator
+    # ('a' key in Metro). Avoids hard-failing when Android SDK is not installed.
+    (cd mobile && npx expo start)
     ;;
 
   test)
