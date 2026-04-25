@@ -1,0 +1,33 @@
+# StudyBuddy Q — local development stack
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      REDIS_URL: redis://redis:6379/0
+      # Local-only fixed master key — DO NOT use in production.
+      BYOK_MASTER_KEY: "${BYOK_MASTER_KEY:-0000000000000000000000000000000000000000000000000000000000000000}"
+      ANTHROPIC_DEFAULT_MODEL: claude-sonnet-4-6
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+      - ./pipeline:/app/pipeline
+    command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
