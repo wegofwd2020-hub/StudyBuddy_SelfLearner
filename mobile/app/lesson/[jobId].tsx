@@ -1,15 +1,25 @@
-import React, { useEffect } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { useGenerateJob } from "@/hooks/useGenerateJob";
-import { LessonRenderer } from "@/components/LessonRenderer";
+import { buildHtml, LessonRenderer } from "@/components/LessonRenderer";
 import { saveLastLesson } from "@/storage/lessonStore";
-import { colors, spacing, typography } from "@/constants/theme";
+import { colors, radius, spacing, typography } from "@/constants/theme";
 
 export default function LessonScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const router = useRouter();
   const { status, lesson, error, elapsed } = useGenerateJob(jobId ?? null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (jobId && lesson) {
@@ -19,8 +29,58 @@ export default function LessonScreen() {
     }
   }, [jobId, lesson]);
 
+  const handleExportPDF = useCallback(async () => {
+    if (!lesson) return;
+    setExporting(true);
+    try {
+      const html = buildHtml(lesson);
+      if (Platform.OS === "web") {
+        // expo-print injects a hidden iframe and triggers window.print()
+        await Print.printAsync({ html });
+      } else {
+        const { uri } = await Print.printToFileAsync({ html });
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Save lesson as PDF",
+          UTI: "com.adobe.pdf",
+        });
+      }
+    } catch {
+      // Silent — user may have cancelled the share/print dialog.
+    } finally {
+      setExporting(false);
+    }
+  }, [lesson]);
+
   if (status === "done" && lesson) {
-    return <LessonRenderer lesson={lesson} />;
+    return (
+      <View style={styles.screen}>
+        <View style={styles.toolbar}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Back to home"
+          >
+            <Text style={styles.backBtnText}>← Back</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.exportBtn, exporting && styles.exportBtnDisabled]}
+            onPress={handleExportPDF}
+            disabled={exporting}
+            accessibilityRole="button"
+            accessibilityLabel="Export lesson as PDF"
+          >
+            <Text style={styles.exportBtnText}>
+              {exporting ? "Preparing…" : "Export PDF"}
+            </Text>
+          </Pressable>
+        </View>
+
+        <LessonRenderer lesson={lesson} />
+      </View>
+    );
   }
 
   if (status === "failed" || error) {
@@ -61,6 +121,43 @@ export default function LessonScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  backBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  backBtnText: {
+    color: colors.primary,
+    fontSize: typography.sizeSm,
+    fontWeight: "600",
+  },
+  exportBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  exportBtnDisabled: {
+    opacity: 0.5,
+  },
+  exportBtnText: {
+    color: colors.primaryText,
+    fontSize: typography.sizeSm,
+    fontWeight: "700",
+  },
   center: {
     flex: 1,
     backgroundColor: colors.background,

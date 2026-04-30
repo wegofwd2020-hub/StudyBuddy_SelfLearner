@@ -13,7 +13,7 @@ interface LessonRendererProps {
   lesson: LessonOutput;
 }
 
-function buildHtml(lesson: LessonOutput): string {
+export function buildHtml(lesson: LessonOutput): string {
   // Embed the lesson as JSON — avoids all HTML-escape issues with raw markdown.
   const lessonJson = JSON.stringify(lesson);
 
