@@ -19,19 +19,13 @@ from pipeline.prompts import _FORMATTING_GUIDELINES, _subject_guidelines
 # Map our user-facing Level → grade-equivalent integer used by
 # `_subject_guidelines` and reading-level descriptors.
 _LEVEL_TO_GRADE: dict[str, int] = {
-    "elementary": 5,
-    "middle": 8,
-    "high_school": 11,
-    "undergrad": 14,
+    "student": 12,
     "professional": 16,
     "expert": 18,
 }
 
 _LEVEL_HUMAN: dict[str, str] = {
-    "elementary": "an Elementary-school learner",
-    "middle": "a Middle-school learner",
-    "high_school": "a High-school learner",
-    "undergrad": "an undergraduate-level learner",
+    "student": "a Grade 12 student",
     "professional": "a working professional",
     "expert": "an expert-level reader",
 }

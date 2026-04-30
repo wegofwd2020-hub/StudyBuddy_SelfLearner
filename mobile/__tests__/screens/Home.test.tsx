@@ -4,6 +4,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 // Module mocks must be declared before the component import.
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  // In tests there is no navigation lifecycle, so invoke the callback immediately.
+  useFocusEffect: (cb: () => void) => { cb(); },
 }));
 
 jest.mock("../../src/api/client", () => ({
@@ -101,7 +103,7 @@ describe("HomeScreen", () => {
       savedAt: "2026-04-25T10:00:00.000Z",
       lesson: {
         topic: "TCP three-way handshake",
-        level: "high_school",
+        level: "student",
         language: "en",
         synopsis: "...",
         learning_objectives: [],

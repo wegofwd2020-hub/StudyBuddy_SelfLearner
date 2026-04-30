@@ -27,7 +27,7 @@ import pytest
 _FAKE_LESSON_JSON = json.dumps(
     {
         "topic": "Quadratic formula",
-        "level": "high_school",
+        "level": "student",
         "language": "en",
         "synopsis": "The quadratic formula gives the roots of any quadratic equation.",
         "learning_objectives": [
@@ -59,7 +59,7 @@ def _request_body(api_key: str, **overrides) -> dict:
     body = {
         "request_id": str(uuid.uuid4()),
         "topic": "Quadratic formula",
-        "level": "high_school",
+        "level": "student",
         "language": "en",
         "format": "lesson",
         "api_key": api_key,

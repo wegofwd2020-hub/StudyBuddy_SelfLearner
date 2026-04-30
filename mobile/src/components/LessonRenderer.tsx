@@ -1,8 +1,13 @@
-import React, { useMemo } from "react";
-import { StyleSheet, View } from "react-native";
-import WebView from "react-native-webview";
+import React, { useEffect, useMemo, useRef } from "react";
+import { Platform, StyleSheet, View } from "react-native";
 import type { LessonOutput } from "@/types/lesson";
 import { colors } from "@/constants/theme";
+
+// react-native-webview is native-only. Import lazily so the web bundle never
+// tries to resolve it (it has no web entry point and would throw at load time).
+const WebView = Platform.OS !== "web"
+  ? require("react-native-webview").default
+  : null;
 
 interface LessonRendererProps {
   lesson: LessonOutput;
@@ -174,9 +179,37 @@ function buildHtml(lesson: LessonOutput): string {
 </html>`;
 }
 
-export function LessonRenderer({ lesson }: LessonRendererProps) {
+function LessonRendererWeb({ lesson }: LessonRendererProps) {
   const html = useMemo(() => buildHtml(lesson), [lesson]);
+  const urlRef = useRef<string | null>(null);
 
+  const src = useMemo(() => {
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    const blob = new Blob([html], { type: "text/html" });
+    urlRef.current = URL.createObjectURL(blob);
+    return urlRef.current;
+  }, [html]);
+
+  useEffect(() => {
+    return () => {
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    };
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      {/* @ts-expect-error — iframe is a valid web element; RN types don't know it */}
+      <iframe
+        src={src}
+        style={{ flex: 1, border: "none", width: "100%", height: "100%" }}
+        title="Lesson content"
+      />
+    </View>
+  );
+}
+
+function LessonRendererNative({ lesson }: LessonRendererProps) {
+  const html = useMemo(() => buildHtml(lesson), [lesson]);
   return (
     <View style={styles.container}>
       <WebView
@@ -192,6 +225,11 @@ export function LessonRenderer({ lesson }: LessonRendererProps) {
       />
     </View>
   );
+}
+
+export function LessonRenderer({ lesson }: LessonRendererProps) {
+  if (Platform.OS === "web") return <LessonRendererWeb lesson={lesson} />;
+  return <LessonRendererNative lesson={lesson} />;
 }
 
 const styles = StyleSheet.create({

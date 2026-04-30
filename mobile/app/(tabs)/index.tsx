@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { submitGenerate } from "@/api/client";
 import { loadApiKey } from "@/secure/keyStore";
 import { loadLastLesson } from "@/storage/lessonStore";
@@ -19,7 +18,7 @@ import { colors, radius, spacing, typography } from "@/constants/theme";
 import type { StoredLesson } from "@/storage/lessonStore";
 
 function randomRequestId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  return crypto.randomUUID();
 }
 
 export default function HomeScreen() {
@@ -29,41 +28,36 @@ export default function HomeScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [lastLesson, setLastLesson] = useState<StoredLesson | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const isMounted = useRef(true);
 
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      const [key, stored] = await Promise.all([
-        loadApiKey(),
-        loadLastLesson(),
-      ]);
-      if (!isMounted.current) return;
-      setHasKey(key !== null);
-      setLastLesson(stored);
-    })();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      isMounted.current = true;
+      (async () => {
+        const [key, stored] = await Promise.all([
+          loadApiKey(),
+          loadLastLesson(),
+        ]);
+        if (!isMounted.current) return;
+        setHasKey(key !== null);
+        setLastLesson(stored);
+      })();
+      return () => {
+        isMounted.current = false;
+      };
+    }, []),
+  );
 
   const handleGenerate = useCallback(async () => {
     const trimmedTopic = topic.trim();
     if (!trimmedTopic) return;
 
+    setErrorMsg(null);
+
     const apiKey = await loadApiKey();
     if (!apiKey) {
-      Alert.alert(
-        "API key required",
-        "Go to Settings and paste your Anthropic API key to get started.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Open Settings", onPress: () => router.push("/settings") },
-        ],
-      );
+      setErrorMsg("No API key saved. Go to Settings and paste your Anthropic key.");
       return;
     }
 
@@ -82,7 +76,7 @@ export default function HomeScreen() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Could not reach server";
-      Alert.alert("Generation failed", message);
+      setErrorMsg(message);
     } finally {
       if (isMounted.current) setSubmitting(false);
     }
@@ -126,6 +120,12 @@ export default function HomeScreen() {
 
       <Text style={styles.label}>Level</Text>
       <LevelPicker value={level} onChange={setLevel} />
+
+      {errorMsg && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{errorMsg}</Text>
+        </View>
+      )}
 
       <Pressable
         style={[styles.generateBtn, !canGenerate && styles.generateBtnDisabled]}
@@ -205,6 +205,17 @@ const styles = StyleSheet.create({
     fontSize: typography.sizeMd,
     minHeight: 90,
     textAlignVertical: "top",
+  },
+  errorBanner: {
+    backgroundColor: colors.error + "22",
+    borderColor: colors.error + "66",
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  errorBannerText: {
+    color: colors.error,
+    fontSize: typography.sizeSm,
   },
   generateBtn: {
     backgroundColor: colors.primary,

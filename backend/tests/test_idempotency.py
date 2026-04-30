@@ -18,7 +18,7 @@ def _request_body(api_key: str, request_id: str, **overrides) -> dict:
     body = {
         "request_id": request_id,
         "topic": "Quadratic formula",
-        "level": "high_school",
+        "level": "student",
         "language": "en",
         "format": "lesson",
         "api_key": api_key,
@@ -39,7 +39,7 @@ async def test_duplicate_request_id_returns_same_job_id(client, known_test_api_k
             json.dumps(
                 {
                     "topic": "x",
-                    "level": "high_school",
+                    "level": "student",
                     "language": "en",
                     "synopsis": "x",
                     "learning_objectives": ["a"],
@@ -69,7 +69,7 @@ async def test_different_request_ids_get_different_job_ids(client, known_test_ap
             json.dumps(
                 {
                     "topic": "x",
-                    "level": "high_school",
+                    "level": "student",
                     "language": "en",
                     "synopsis": "x",
                     "learning_objectives": ["a"],
@@ -105,7 +105,7 @@ async def test_idempotency_does_not_re_call_anthropic(client, known_test_api_key
             json.dumps(
                 {
                     "topic": "x",
-                    "level": "high_school",
+                    "level": "student",
                     "language": "en",
                     "synopsis": "x",
                     "learning_objectives": ["a"],

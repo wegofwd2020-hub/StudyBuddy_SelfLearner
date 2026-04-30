@@ -100,7 +100,7 @@ async def test_generate_endpoint_does_not_log_key(client, known_test_api_key, ca
         # Simulate a successful (mock) generation. The test only cares that
         # the key never lands in any log along the way.
         MockProvider.return_value.generate.return_value = (
-            '{"topic": "Quadratic formula", "level": "high_school", "language": "en", '
+            '{"topic": "Quadratic formula", "level": "student", "language": "en", '
             '"synopsis": "x", "learning_objectives": ["a"], '
             '"sections": [{"heading": "h", "body_markdown": "b"}], '
             '"key_takeaways": ["k"], "further_reading": []}',
@@ -113,7 +113,7 @@ async def test_generate_endpoint_does_not_log_key(client, known_test_api_key, ca
             json={
                 "request_id": str(uuid.uuid4()),
                 "topic": "Quadratic formula",
-                "level": "high_school",
+                "level": "student",
                 "language": "en",
                 "format": "lesson",
                 "api_key": known_test_api_key,
@@ -147,7 +147,7 @@ async def test_generate_validation_error_does_not_log_key(client, capsys):
         json={
             "request_id": str(uuid.uuid4()),
             "topic": "",  # invalid — triggers validation error
-            "level": "high_school",
+            "level": "student",
             "language": "en",
             "format": "lesson",
             "api_key": leaky,
@@ -208,7 +208,7 @@ async def test_worker_path_does_not_log_key(client, known_test_api_key, capsys):
             json={
                 "request_id": str(uuid.uuid4()),
                 "topic": "Anything",
-                "level": "high_school",
+                "level": "student",
                 "language": "en",
                 "format": "lesson",
                 "api_key": known_test_api_key,

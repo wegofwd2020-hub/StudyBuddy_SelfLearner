@@ -6,24 +6,9 @@ export interface Level {
 
 export const LEVELS: Level[] = [
   {
-    value: "elementary",
-    label: "Elementary",
-    description: "Grades 4–6",
-  },
-  {
-    value: "middle",
-    label: "Middle school",
-    description: "Grades 7–8",
-  },
-  {
-    value: "high_school",
-    label: "High school",
-    description: "Grades 9–12",
-  },
-  {
-    value: "undergrad",
-    label: "Undergraduate",
-    description: "University level",
+    value: "student",
+    label: "Student",
+    description: "Grade 12",
   },
   {
     value: "professional",
@@ -37,4 +22,4 @@ export const LEVELS: Level[] = [
   },
 ];
 
-export const DEFAULT_LEVEL = "high_school";
+export const DEFAULT_LEVEL = "student";
