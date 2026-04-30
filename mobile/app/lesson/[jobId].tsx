@@ -35,8 +35,19 @@ export default function LessonScreen() {
     try {
       const html = buildHtml(lesson);
       if (Platform.OS === "web") {
-        // expo-print injects a hidden iframe and triggers window.print()
-        await Print.printAsync({ html });
+        // Open the full lesson HTML in a new tab so the browser's print
+        // dialog sees the complete page, not just the Expo shell.
+        // KaTeX + Mermaid load from CDN in the new tab, then Ctrl+P / Cmd+P
+        // (or File → Print) produces a complete PDF.
+        const blob = new Blob([html], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, "_blank");
+        // Revoke the blob URL after 30 s — long enough for CDN scripts to load.
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
+        if (!win) {
+          // Popup was blocked — fall back to triggering print on the current page.
+          await Print.printAsync({ html });
+        }
       } else {
         const { uri } = await Print.printToFileAsync({ html });
         await Sharing.shareAsync(uri, {
