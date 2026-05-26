@@ -123,9 +123,7 @@ async def test_malformed_json_retries_then_succeeds(client, fake_redis, known_te
 
 
 @pytest.mark.asyncio
-async def test_malformed_json_exhausts_retries_marks_failed(
-    client, fake_redis, known_test_api_key
-):
+async def test_malformed_json_exhausts_retries_marks_failed(client, fake_redis, known_test_api_key):
     """Always-malformed JSON → failed after exactly 3 attempts; envelope shredded."""
     with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = ("never valid json", 10, 5)
@@ -159,9 +157,7 @@ async def test_empty_toc_tree_marks_failed(client, fake_redis, known_test_api_ke
 
 
 @pytest.mark.asyncio
-async def test_anthropic_failure_marks_failed_without_retry(
-    client, fake_redis, known_test_api_key
-):
+async def test_anthropic_failure_marks_failed_without_retry(client, fake_redis, known_test_api_key):
     with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.side_effect = RuntimeError("upstream timeout")
 
