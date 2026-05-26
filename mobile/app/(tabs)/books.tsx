@@ -28,6 +28,28 @@ function NewBookButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+function ImportButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      style={styles.importBtn}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Import a book"
+    >
+      <Text style={styles.importBtnText}>Import a book</Text>
+    </Pressable>
+  );
+}
+
+function BooksHeader({ onNew, onImport }: { onNew: () => void; onImport: () => void }) {
+  return (
+    <View>
+      <NewBookButton onPress={onNew} />
+      <ImportButton onPress={onImport} />
+    </View>
+  );
+}
+
 export default function BooksScreen() {
   const router = useRouter();
   const [books, setBooks] = useState<BookMeta[]>([]);
@@ -55,6 +77,7 @@ export default function BooksScreen() {
           tree you can build a book from.
         </Text>
         <NewBookButton onPress={() => router.push("/book/new")} />
+        <ImportButton onPress={() => router.push("/book/import")} />
       </View>
     );
   }
@@ -68,7 +91,12 @@ export default function BooksScreen() {
       keyExtractor={(item) => item.id}
       numColumns={numColumns}
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
-      ListHeaderComponent={<NewBookButton onPress={() => router.push("/book/new")} />}
+      ListHeaderComponent={
+        <BooksHeader
+          onNew={() => router.push("/book/new")}
+          onImport={() => router.push("/book/import")}
+        />
+      }
       ItemSeparatorComponent={() => <View style={styles.separator} />}
       renderItem={({ item }) => (
         <Pressable
@@ -118,6 +146,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   newBtnText: { color: colors.primaryText, fontSize: typography.sizeMd, fontWeight: "700" },
+  importBtn: {
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  importBtnText: { color: colors.textSecondary, fontSize: typography.sizeSm, fontWeight: "600" },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
