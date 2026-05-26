@@ -35,6 +35,20 @@ export default function RootLayout() {
             headerBackTitle: "Books",
           }}
         />
+        <Stack.Screen
+          name="book/generate/[id]"
+          options={{
+            title: "Generate topics",
+            headerBackTitle: "Back",
+          }}
+        />
+        <Stack.Screen
+          name="book/topic/[bookId]/[topicId]"
+          options={{
+            title: "Topic",
+            headerBackTitle: "Back",
+          }}
+        />
       </Stack>
     </>
   );

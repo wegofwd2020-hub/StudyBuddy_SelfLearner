@@ -18,6 +18,7 @@ jest.mock("../../src/secure/keyStore", () => ({
 
 jest.mock("../../src/storage/bookStore", () => ({
   saveBook: jest.fn().mockResolvedValue(undefined),
+  ensureTopicIds: (toc: unknown) => toc,
 }));
 
 const { submitStructure, getStructureJob } = require("../../src/api/client") as {

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Book, BookMeta, StructuredTOC } from "@/types/book";
+import type { Book, BookMeta, GeneratedTopic, StructuredTOC } from "@/types/book";
 
 // Local-first book storage (ADR-003 D1) — same AsyncStorage shape as the lesson
 // library: a single index + one entry per book. Migrate to expo-sqlite if books
@@ -9,6 +9,34 @@ const bookKey = (id: string) => `sbq_book_${id}`;
 
 function countUnits(toc: StructuredTOC): number {
   return toc.subjects.reduce((n, s) => n + s.units.length, 0);
+}
+
+// Ensure every topic (unit) has a stable id, assigning one where missing.
+// Returns a new TOC; the input is not mutated. Used when a structured TOC first
+// arrives and when loading older books saved before topic ids existed.
+export function ensureTopicIds(toc: StructuredTOC): StructuredTOC {
+  return {
+    subjects: toc.subjects.map((s) => ({
+      ...s,
+      units: s.units.map((u) => (u.id ? u : { ...u, id: crypto.randomUUID() })),
+    })),
+  };
+}
+
+function topicIds(toc: StructuredTOC): Set<string> {
+  const ids = new Set<string>();
+  for (const s of toc.subjects) for (const u of s.units) if (u.id) ids.add(u.id);
+  return ids;
+}
+
+// Attach/replace one topic's generated content, returning a new Book. Bumps
+// updatedAt so the index reflects the change.
+export function setTopicContent(book: Book, gen: GeneratedTopic): Book {
+  return {
+    ...book,
+    content: { ...(book.content ?? {}), [gen.topicId]: gen },
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 function toMeta(book: Book): BookMeta {
@@ -22,7 +50,15 @@ function toMeta(book: Book): BookMeta {
 }
 
 export async function saveBook(book: Book): Promise<void> {
-  await AsyncStorage.setItem(bookKey(book.id), JSON.stringify(book));
+  // Prune generated content for topics that no longer exist in the tree.
+  const validIds = topicIds(book.toc);
+  const pruned: Record<string, GeneratedTopic> = {};
+  for (const [id, gen] of Object.entries(book.content ?? {})) {
+    if (validIds.has(id)) pruned[id] = gen;
+  }
+  const toStore: Book = { ...book, content: pruned };
+
+  await AsyncStorage.setItem(bookKey(book.id), JSON.stringify(toStore));
 
   const index = await loadBookIndex();
   const deduped = index.filter((m) => m.id !== book.id);
@@ -46,7 +82,10 @@ export async function loadBook(id: string): Promise<Book | null> {
   const raw = await AsyncStorage.getItem(bookKey(id));
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as Book;
+    const book = JSON.parse(raw) as Book;
+    // Backfill topic ids for books saved before generate-all existed. Persisted
+    // on the next save; in-memory here so callers always see stable ids.
+    return { ...book, toc: ensureTopicIds(book.toc) };
   } catch {
     return null;
   }
