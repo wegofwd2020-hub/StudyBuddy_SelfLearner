@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { submitStructure } from "@/api/client";
 import { useStructureJob } from "@/hooks/useStructureJob";
 import { loadApiKey } from "@/secure/keyStore";
+import { ensureTopicIds } from "@/storage/bookStore";
 import { BookEditor } from "@/components/BookEditor";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
@@ -72,7 +73,7 @@ export default function NewBookScreen() {
           <BookEditor
             bookId={null}
             initialTitle={title.trim() || "Untitled book"}
-            initialToc={toc}
+            initialToc={ensureTopicIds(toc)}
             onSaved={() => router.replace("/books")}
           />
         </ScrollView>

@@ -1,9 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { loadBook } from "@/storage/bookStore";
 import { BookEditor } from "@/components/BookEditor";
-import { colors, spacing, typography } from "@/constants/theme";
+import { colors, radius, spacing, typography } from "@/constants/theme";
 import type { Book } from "@/types/book";
 
 export default function SavedBookScreen() {
@@ -55,6 +62,19 @@ export default function SavedBookScreen() {
         createdAt={book.createdAt}
         onSaved={() => router.replace("/books")}
       />
+
+      <Pressable
+        style={styles.generateBtn}
+        onPress={() => router.push(`/book/generate/${book.id}`)}
+        accessibilityRole="button"
+        accessibilityLabel="Generate all topics"
+      >
+        <Text style={styles.generateBtnText}>Generate all topics →</Text>
+      </Pressable>
+      <Text style={styles.generateHint}>
+        Save your edits first. Generation runs one topic at a time against your
+        Anthropic key.
+      </Text>
     </ScrollView>
   );
 }
@@ -70,4 +90,20 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   missing: { color: colors.textSecondary, fontSize: typography.sizeMd },
+  generateBtn: {
+    backgroundColor: colors.surfaceHigh,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.lg,
+  },
+  generateBtnText: { color: colors.primary, fontSize: typography.sizeMd, fontWeight: "700" },
+  generateHint: {
+    color: colors.textMuted,
+    fontSize: typography.sizeXs,
+    textAlign: "center",
+    marginTop: spacing.xs,
+  },
 });

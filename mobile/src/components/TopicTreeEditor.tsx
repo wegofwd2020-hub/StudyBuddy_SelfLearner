@@ -15,7 +15,7 @@ function clone(toc: StructuredTOC): StructuredTOC {
 }
 
 function emptyUnit(): TopicNode {
-  return { title: "New topic", subtopics: [], prerequisites: [] };
+  return { id: crypto.randomUUID(), title: "New topic", subtopics: [], prerequisites: [] };
 }
 
 function emptySubject(): SubjectNode {

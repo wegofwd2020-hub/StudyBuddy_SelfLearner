@@ -67,6 +67,14 @@ and "Next up" below).
 ### Backlog tickets drafted (`docs/jira/`)
 - `SBQ-UI-001` — parameter overrides · `SBQ-UI-002` — about page · `SBQ-EXP-001` — email share.
 
+### Book Authoring — Phase 1 ✅ (per `adr/ADR-003-book-authoring.md`)
+The OnDemand→Q authoring port (`docs/PORT_BRIEF.md`), built in PRs #8–#11.
+End-to-end flow works: **paste TOC → structure → edit tree → generate all → read per-topic lessons.**
+- **PR-1 (#9) — backend `POST /structure`:** vendored `toc_structurer` prompt IP (BYOK-safe divergence), structuring routed through the key-safe `call_anthropic` seam, 3× retry, shared `/jobs/{id}` polling. 9 tests.
+- **PR-2 (#10) — mobile topic-tree editor:** `Books` tab, `useStructureJob`, local `bookStore`, `TopicTreeEditor` (edit/add/remove/reorder), new-book + saved-book screens. 21 tests.
+- **PR-3 (#11) — generate-all loop:** client-orchestrated batch over `/generate` (no backend change), per-topic content saved on the book, skip-already-done, cancellable, per-topic viewer reusing `LessonRenderer`. 13 tests.
+- Backend suite green (62 incl. structure); mobile suite green (56 / 10 suites).
+
 ---
 
 ## Not yet done
@@ -81,9 +89,8 @@ and "Next up" below).
 - Quiz / Explanation formats, French / Spanish, iOS.
 - `SBQ-SEC-001` safety follow-up (gates the override UI from public alpha — not yet filed).
 
-### Next major phase — Book Authoring (post-MVP)
-- **Multi-topic book authoring** is Q's next major phase per `adr/ADR-003-book-authoring.md` (status: *Proposed*) — porting the OnDemand "Curriculum Authoring Studio" workflow onto Q's BYOK/stateless/local-first stack (paste TOC → structure → topic tree → generate-per-topic → review → snapshot → publish/export).
-- A re-implementation, not a code transplant; sequenced **after** the single-lesson MVP stabilises. See `PORT_BRIEF.md` for the port handoff.
+### Book Authoring — Phase 2+ (deferred, per `adr/ADR-003-book-authoring.md`)
+- Phase 1 is built (see the "Book Authoring — Phase 1 ✅" entry under Done). Remaining: flow analysis (`POST /flow-check`), snapshots/versioning, regenerate-with-reason, full-book PDF/EPUB export.
 
 ---
 
@@ -109,4 +116,4 @@ and "Next up" below).
    `eas build --platform android --profile preview --env EXPO_PUBLIC_API_BASE_URL=https://<url>`.
 3. Run the six success criteria on a Pixel emulator + one physical Android.
 4. When all six pass → MVP done → start v1.1 (auth, sync, push, more formats).
-5. **Then** begin Book Authoring Phase 1 per `adr/ADR-003-book-authoring.md` (`POST /structure` + topic-tree editor + generate-all loop).
+5. Book Authoring **Phase 1 is done** (structure → edit → generate-all → read). Next, when prioritised: **Phase 2** per `adr/ADR-003-book-authoring.md` (flow analysis, snapshots/versioning, regenerate-with-reason, full-book PDF/EPUB).

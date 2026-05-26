@@ -23,11 +23,28 @@ jest.mock("@react-native-async-storage/async-storage", () => {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   deleteBook,
+  ensureTopicIds,
   loadBook,
   loadBookIndex,
   saveBook,
+  setTopicContent,
 } from "../../src/storage/bookStore";
-import type { Book } from "../../src/types/book";
+import type { Book, GeneratedTopic } from "../../src/types/book";
+
+const LESSON = {
+  topic: "x",
+  level: "student",
+  language: "en",
+  synopsis: "s",
+  learning_objectives: ["a"],
+  sections: [{ heading: "h", body_markdown: "b" }],
+  key_takeaways: ["k"],
+  further_reading: [],
+};
+
+function gen(topicId: string): GeneratedTopic {
+  return { topicId, title: "T", lesson: LESSON, generatedAt: "2026-05-26T12:00:00.000Z" };
+}
 
 function makeBook(id: string, title: string): Book {
   return {
@@ -96,5 +113,53 @@ describe("bookStore", () => {
 
     expect(await loadBook("b1")).toBeNull();
     expect((await loadBookIndex()).map((m) => m.id)).toEqual(["b2"]);
+  });
+});
+
+describe("ensureTopicIds", () => {
+  it("assigns ids only to topics missing them, preserving existing ones", () => {
+    const out = ensureTopicIds({
+      subjects: [
+        {
+          subject_label: "Physics",
+          units: [
+            { id: "keep", title: "Kinematics", subtopics: [], prerequisites: [] },
+            { title: "Dynamics", subtopics: [], prerequisites: [] },
+          ],
+        },
+      ],
+    });
+    expect(out.subjects[0].units[0].id).toBe("keep");
+    expect(out.subjects[0].units[1].id).toBeTruthy();
+  });
+});
+
+describe("setTopicContent", () => {
+  it("attaches content keyed by topic id and bumps updatedAt", () => {
+    const book = makeBook("b1", "First");
+    book.toc.subjects[0].units[0].id = "t1";
+    const next = setTopicContent(book, gen("t1"));
+    expect(next.content?.["t1"]?.lesson).toBe(LESSON);
+    expect(next.updatedAt).not.toBe(book.updatedAt);
+  });
+});
+
+describe("content persistence + pruning", () => {
+  it("backfills topic ids on load for older books", async () => {
+    await saveBook(makeBook("b1", "First")); // makeBook units have no ids
+    const loaded = await loadBook("b1");
+    expect(loaded?.toc.subjects[0].units.every((u) => !!u.id)).toBe(true);
+  });
+
+  it("prunes generated content for topics no longer in the tree", async () => {
+    const book = makeBook("b1", "First");
+    book.toc.subjects[0].units[0].id = "t1";
+    book.toc.subjects[0].units[1].id = "t2";
+    book.content = { t1: gen("t1"), t2: gen("t2"), ghost: gen("ghost") };
+
+    await saveBook(book);
+    const loaded = await loadBook("b1");
+
+    expect(Object.keys(loaded?.content ?? {}).sort()).toEqual(["t1", "t2"]);
   });
 });
