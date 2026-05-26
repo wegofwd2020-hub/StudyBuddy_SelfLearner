@@ -2,7 +2,46 @@
 
 > Paste-ready context for a fresh, **Q-rooted** Claude session that does the port.
 > Launch the session from this repo root so Q's CLAUDE.md + ADRs load as primary
-> context. Pairs with [`docs/adr/ADR-003-book-authoring.md`](adr/ADR-003-book-authoring.md).
+> context. Pairs with [`docs/adr/ADR-003-book-authoring.md`](adr/ADR-003-book-authoring.md)
+> and [`docs/CONTENT_MIGRATION_CONTEXT_ENGINEERING.md`](CONTENT_MIGRATION_CONTEXT_ENGINEERING.md).
+
+## ⚠️ Current state — reconciled against shipped code (2026-05-26)
+
+**The "port has NOT started" framing below is STALE.** A reconciliation of Q
+`main` (@ b835420) against this brief found the Phase-1 slice **already shipped**.
+Read this section first; treat the rest as design background.
+
+**Already shipped in Q `main`:**
+- `POST /structure` (TOC → topic tree) — `backend/src/structure/`; polls shared `GET /jobs/{id}`.
+- Topic-tree editor — `mobile/src/components/TopicTreeEditor.tsx`, `BookEditor.tsx`, `app/book/new.tsx`.
+- Generate-all loop — `mobile/src/hooks/useGenerateAll.ts`, `app/book/generate/[id].tsx`,
+  `bookStore.setTopicContent` (gap-fills; doesn't re-bill finished topics).
+- Bonus: saved-books browser, per-topic reader, BYOK key store (`secure/keyStore.ts`),
+  dual web+native `LessonRenderer` (WebView), local-first `bookStore`/`lessonStore`.
+
+**Still genuinely absent (deferred):** flow analysis · snapshots/versioning ·
+regenerate-with-reason · EPUB export.
+
+**What actually remains for the goal "read *Context Engineering in the Enterprise*
+in Q"** (= content-migration Phases 2–4, see the migration doc):
+- **Storage gap:** `GeneratedTopic` (`mobile/src/types/book.ts`) holds **only `lesson`** —
+  add `tutorial` / `quizSets` / `experiment`.
+- **Render gap:** `LessonRenderer.tsx` renders **only `LessonOutput`** — add the 3 new views.
+- **Ingest:** load the exported `book.json` (bundled seed asset, or an import action).
+
+**Discrepancies to resolve (not in the original brief):**
+1. **Format vocabulary:** Q's backend declares `OutputFormat = Literal["lesson",
+   "explanation", "quiz"]` — **"explanation", not "tutorial"**. OnDemand + the export
+   use `tutorial`. The migration doc pinned `GeneratedTopic` keys as
+   `tutorial`/`quizSets`/`experiment` — reconcile when building Phase 2.
+2. **Native 5-type generation is NOT wired** — `backend/src/generate/` has only
+   `build_lesson_prompt` + `lesson_schema.LessonOutput`. (Only matters if Q should
+   *generate* non-lesson content itself — beyond the migration, which arrives pre-made.)
+3. **Prompt IP for all 5 types is already vendored** (`pipeline/prompts.py` has
+   `build_quiz/tutorial/experiment_prompt`) — just unwired. No vendored `schemas.py`
+   validators yet (only `content_format_validator.py`).
+
+---
 
 ## Mission
 
@@ -23,10 +62,11 @@ transplant, NOT a cross-import.**
 
 ## First step
 
-Read + finalize the draft ADR already written for this:
-`docs/adr/ADR-003-book-authoring.md` (status: **Proposed**; this branch is
-**unpushed, not merged to main**). Decide its disposition (merge to main / open
-PR) before writing code.
+~~Read + finalize the draft ADR already written for this.~~ **Done:**
+`docs/adr/ADR-003-book-authoring.md` (status: Proposed) is now on Q `main`,
+alongside `docs/CONTENT_MIGRATION_CONTEXT_ENGINEERING.md`. The actual first step
+now is the **content-migration Phases 2–4** (storage + render + ingest) — see the
+reconciliation banner at the top and the migration doc.
 
 ## Reference sources in the sibling repo (READ to learn the workflow; never import)
 
@@ -62,13 +102,17 @@ Sibling path from this repo root: `../StudyBuddy_OnDemand/`
 | Next.js admin console | RN/Expo screens (Q is mobile-first) |
 | `SBMarkdown` + Mermaid/KaTeX renderer | Q's existing `LessonRenderer` (WebView) |
 
-## Q's current state (branch `feat/mobile-skeleton`)
+## Q's current state (on `main`)
+
+> Stale snapshot — superseded by the reconciliation banner at the top.
+> `feat/mobile-skeleton` has since merged to `main` (Q PRs #11/#13), so the
+> "extends from one-artefact" framing is already done.
 
 Single-lesson generate (`/generate` + `/jobs`), RN/Expo lesson library with
 per-lesson delete + PDF export, vendored pipeline, BYOK. The book-authoring work
 **extends** this from one-artefact to TOC → multi-topic-book.
 
-## Phase 1 scope (smallest end-to-end slice)
+## Phase 1 scope (smallest end-to-end slice) — ✅ SHIPPED (see banner)
 
 1. Stateless `POST /structure` — paste TOC → structured topic tree (port `toc_structurer`).
 2. Topic-tree editor screen — RN: edit / reorder / add / remove topics.
