@@ -5,6 +5,17 @@
 > project is published; the Q reader work (Phases 2–4) can start beforehand.
 > Pairs with [`PORT_BRIEF.md`](PORT_BRIEF.md) and [`adr/ADR-003-book-authoring.md`](adr/ADR-003-book-authoring.md).
 
+**Status (2026-05-26): all code phases shipped (Phases 1–4). Only the
+operational run remains** — publish the book, export, import. See Phase 5.
+
+| Phase | What | Status |
+|---|---|---|
+| 1 | OnDemand export script | ✅ OnDemand PR #400 |
+| 2 | Q: 5-type content model | ✅ Q PR #15 |
+| 3 | Q: render 5 types | ✅ Q PR #15 |
+| 4 | Q: ingest `book.json` | ✅ Q PR #16 |
+| 5 | Operational run + verify | ⏳ waits on the book being published in the Studio |
+
 **Scope decision (owner, 2026-05-26): "Everything"** — carry lesson + tutorial +
 3 quiz sets + experiment per topic (full fidelity), not lesson-only.
 
@@ -82,38 +93,42 @@ tutorial / quiz / experiment objects it emits use the vendored-schema field name
 - `experiment`: `{experiment_title, materials[], safety_notes[], steps[{step_number, instruction, expected_observation}], questions[{question, answer}], conclusion_prompt}`
 - `lesson`: Q's existing `LessonOutput` (the field-rename map above).
 
-## Phase 2 — Q: grow the content model to hold 5 types
+## Phase 2 — Q: grow the content model to hold 5 types ✅ SHIPPED (Q PR #15)
 
-- `mobile/src/types/book.ts` — extend `GeneratedTopic` from `{lesson}` to
-  `{lesson, tutorial?, quizSets?, experiment?}`; add `TutorialOutput`, `QuizSet`,
-  `ExperimentOutput` mirroring the vendored prompt schema.
-- `mobile/src/storage/bookStore.ts` — already keys by `topicId`; just a larger
-  payload. Watch the **AsyncStorage quota** (an open ADR-003 question) — a full
-  multi-format book may need per-topic keys instead of one blob.
+`mobile/src/types/book.ts` — `GeneratedTopic` extended to
+`{lesson, tutorial?, quizSets?, experiment?}`; added `TutorialOutput`, `QuizSet`,
+`ExperimentOutput` matching the `book_export.py` contract above. `bookStore.ts`
+keys by `topicId` unchanged (larger payload). AsyncStorage-quota concern still
+open (ADR-003) — revisit if a full multi-format book is large.
 
-## Phase 3 — Q: render the new types
+## Phase 3 — Q: render the new types ✅ SHIPPED (Q PR #15)
 
-- `mobile/src/components/LessonRenderer.tsx` (or a new `TopicRenderer`) — add
-  Tutorial / Quiz-set / Experiment views. Reuse the existing Markdown + KaTeX +
-  Mermaid WebView path (it renders the quiz GFM tables correctly). Decide
-  interactive vs. static quiz rendering at build time.
+`mobile/src/components/contentHtml.ts` (new) — pure HTML builders; `buildTopicHtml`
+renders lesson + tutorial + quiz sets + experiment. `LessonRenderer.tsx` refactored
+onto a shared `HtmlView` + new `TopicRenderer`; the per-topic screen renders the
+full topic. Quiz question text + explanations route through markdown so GFM tables
+/ KaTeX render. Quizzes rendered **static** (question + options + answer + explanation).
 
-## Phase 4 — Q: ingest path
+## Phase 4 — Q: ingest path ✅ SHIPPED (Q PR #16)
 
-- **Recommended for this one-off:** bundle `book.json` as a seed asset the library
-  imports on first run.
-- **Durable option:** an "Import book" action (Expo file picker / paste) →
-  validate → `saveBook()`.
+`mobile/src/storage/importBook.ts` — `parseBook()` (validate → normalized `Book`)
++ `importBook()` (validate + `saveBook`). `app/book/import.tsx` — **paste-based**
+import screen (chose paste over file-picker to match the existing "paste a TOC"
+flow and avoid a native dependency); "Import a book" entry on the books screen.
 
-## Phase 5 — Verify
+## Phase 5 — Operational run + verify ⏳ REMAINING
 
-- Book appears in the library; TOC navigable; each topic shows lesson + tutorial +
-  quizzes + experiment; Mermaid/KaTeX/tables render. Round-trip a couple of topics
-  against the OnDemand originals.
+The code is done; this is the manual run, gated on the book being **published** in
+the Studio:
+1. Publish "Context Engineering in the Enterprise" in the Authoring Studio.
+2. OnDemand: `python scripts/export_book.py --project-id <uuid> --out book.json`.
+3. Q: open the app → Books → **Import a book** → paste `book.json`.
+4. Verify: book appears in the library; TOC navigable; each topic shows lesson +
+   tutorial + quizzes + experiment; Mermaid/KaTeX/tables render. Round-trip a
+   couple of topics against the OnDemand originals.
 
-## Sequencing
+## What's left
 
-Phases 2–4 (Q reader) are the bulk and **do not depend on the specific book** —
-build them ahead. Phase 1 (export) needs the published curriculum. The Q reader
-work belongs in a **Q-rooted session**; the OnDemand export script can be done
-from the OnDemand side.
+Nothing in code — Phases 1–4 are merged (OnDemand `main`: export; Q `main`:
+reader + import). The remainder is the **operational run in Phase 5**, gated on
+the book being published in the Authoring Studio.
