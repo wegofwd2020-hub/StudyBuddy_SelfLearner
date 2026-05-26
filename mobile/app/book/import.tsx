@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { importBook } from "@/storage/importBook";
+import { pickBookFileContents } from "@/storage/pickBookFile";
 import { PageContainer } from "@/components/PageContainer";
 import { useResponsive } from "@/hooks/useResponsive";
 import { colors, radius, spacing, typography } from "@/constants/theme";
@@ -18,18 +19,36 @@ export default function ImportBookScreen() {
 
   const canImport = raw.trim().length > 0 && !busy;
 
-  const handleImport = useCallback(async () => {
-    if (!raw.trim()) return;
+  const runImport = useCallback(
+    async (contents: string) => {
+      setErrorMsg(null);
+      setBusy(true);
+      try {
+        const book = await importBook(contents);
+        router.replace(`/book/saved/${book.id}`);
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : "Couldn’t import that book.");
+        setBusy(false);
+      }
+    },
+    [router],
+  );
+
+  const handlePasteImport = useCallback(() => {
+    if (raw.trim()) void runImport(raw);
+  }, [raw, runImport]);
+
+  const handleFileImport = useCallback(async () => {
     setErrorMsg(null);
-    setBusy(true);
+    let contents: string | null;
     try {
-      const book = await importBook(raw);
-      router.replace(`/book/saved/${book.id}`);
+      contents = await pickBookFileContents();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Couldn’t import that book.");
-      setBusy(false);
+      setErrorMsg(err instanceof Error ? err.message : "Couldn’t read that file.");
+      return;
     }
-  }, [raw, router]);
+    if (contents != null) void runImport(contents);
+  }, [runImport]);
 
   return (
     <ScrollView
@@ -40,9 +59,22 @@ export default function ImportBookScreen() {
       <PageContainer gap={spacing.sm}>
         <Text style={styles.label}>Import a book</Text>
         <Text style={styles.hint}>
-          Paste a book’s JSON (for example, one exported from the Authoring
+          Open a book’s JSON file (for example, one exported from the Authoring
           Studio). It’s saved to this device’s library — nothing is uploaded.
         </Text>
+
+        <Pressable
+          style={[styles.importBtn, busy && styles.importBtnDisabled]}
+          onPress={handleFileImport}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Choose a JSON file to import"
+          accessibilityState={{ disabled: busy }}
+        >
+          <Text style={styles.importBtnText}>Choose a JSON file</Text>
+        </Pressable>
+
+        <Text style={styles.orHint}>or paste the JSON directly (best for small books):</Text>
         <TextInput
           style={[styles.input, isDesktop && styles.inputDesktop]}
           value={raw}
@@ -63,14 +95,14 @@ export default function ImportBookScreen() {
         )}
 
         <Pressable
-          style={[styles.importBtn, !canImport && styles.importBtnDisabled]}
-          onPress={handleImport}
+          style={[styles.pasteBtn, !canImport && styles.importBtnDisabled]}
+          onPress={handlePasteImport}
           disabled={!canImport}
           accessibilityRole="button"
-          accessibilityLabel="Import book"
+          accessibilityLabel="Import pasted book JSON"
           accessibilityState={{ disabled: !canImport }}
         >
-          <Text style={styles.importBtnText}>{busy ? "Importing…" : "Import"}</Text>
+          <Text style={styles.pasteBtnText}>{busy ? "Importing…" : "Import pasted JSON"}</Text>
         </Pressable>
       </PageContainer>
     </ScrollView>
@@ -89,6 +121,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   hint: { color: colors.textMuted, fontSize: typography.sizeSm },
+  orHint: { color: colors.textMuted, fontSize: typography.sizeSm, marginTop: spacing.sm },
   input: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -118,4 +151,13 @@ const styles = StyleSheet.create({
   },
   importBtnDisabled: { opacity: 0.45 },
   importBtnText: { color: colors.primaryText, fontSize: typography.sizeMd, fontWeight: "700" },
+  pasteBtn: {
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.md,
+  },
+  pasteBtnText: { color: colors.textSecondary, fontSize: typography.sizeSm, fontWeight: "600" },
 });
