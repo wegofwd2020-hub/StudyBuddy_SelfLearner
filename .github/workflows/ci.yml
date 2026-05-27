@@ -61,7 +61,34 @@ jobs:
         working-directory: backend
         run: pytest -v --tb=short
 
-  # ── 3. Defence-in-depth: no real Anthropic key in repo ───────────────────────
+  # ── 3. Compiler — artifact pipeline (book.json → EPUB3) ──────────────────────
+  compiler-test:
+    name: Compiler — Typecheck & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: compiler/package-lock.json
+
+      - name: Install compiler deps
+        working-directory: compiler
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: compiler
+        run: npm run typecheck
+
+      # The real-book gate auto-skips without the local export; the synthetic-book
+      # structure + XML well-formedness gate always runs.
+      - name: Tests
+        working-directory: compiler
+        run: npm test
+
+  # ── 4. Defence-in-depth: no real Anthropic key in repo ───────────────────────
   no-real-key-in-repo:
     name: Defence — No real sk-ant- key committed
     runs-on: ubuntu-latest
