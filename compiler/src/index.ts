@@ -10,7 +10,19 @@ export {
   renderExperiment,
   renderTopicBody,
 } from "./renderCore";
-export { type DiagramRenderer, PassthroughDiagramRenderer } from "./diagrams";
+export {
+  type DiagramRenderer,
+  PassthroughDiagramRenderer,
+  CollectingDiagramRenderer,
+  PrerenderedDiagramRenderer,
+} from "./diagrams";
+export {
+  type MermaidRenderer,
+  MermaidCliRenderer,
+  collectMermaidSources,
+  prerenderDiagrams,
+  extractSvg,
+} from "./mermaid";
 export { STYLESHEET } from "./css";
 export { escapeHtml } from "./html";
 export { xhtmlDocument } from "./xhtml";
