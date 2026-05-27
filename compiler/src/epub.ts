@@ -1,6 +1,11 @@
 import JSZip from "jszip";
 import { renderTopicBody } from "./renderCore";
-import { PassthroughDiagramRenderer, type DiagramRenderer } from "./diagrams";
+import {
+  PassthroughDiagramRenderer,
+  PrerenderedDiagramRenderer,
+  type DiagramRenderer,
+} from "./diagrams";
+import { prerenderDiagrams, type MermaidRenderer } from "./mermaid";
 import { xhtmlDocument } from "./xhtml";
 import { STYLESHEET } from "./css";
 import { escapeHtml } from "./html";
@@ -19,7 +24,11 @@ export class EmptyBookError extends Error {
 }
 
 export interface CompileOptions {
+  // Override the diagram renderer directly (defaults to the passthrough stub).
   diagrams?: DiagramRenderer;
+  // When set, diagrams are pre-rendered to inline SVG with this renderer before
+  // compiling (async). Takes precedence over `diagrams`. See mermaid.ts.
+  mermaid?: MermaidRenderer;
 }
 
 interface Chapter {
@@ -28,6 +37,7 @@ interface Chapter {
   title: string;
   xhtml: string;
   hasMath: boolean;
+  hasSvg: boolean;
 }
 
 interface NavSubject {
@@ -51,7 +61,12 @@ function modifiedTimestamp(iso?: string): string {
 }
 
 export async function compileEpub(book: Book, opts: CompileOptions = {}): Promise<Uint8Array> {
-  const diagrams = opts.diagrams ?? new PassthroughDiagramRenderer();
+  // Diagram strategy: a Mermaid renderer (pre-render to SVG) wins, else an
+  // explicit override, else the passthrough placeholder.
+  let diagrams = opts.diagrams ?? new PassthroughDiagramRenderer();
+  if (opts.mermaid) {
+    diagrams = new PrerenderedDiagramRenderer(await prerenderDiagrams(book, opts.mermaid));
+  }
   const content = book.content ?? {};
 
   // Walk the TOC in reading order; emit a chapter per content-bearing topic and
@@ -69,7 +84,14 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
       const href = `chapters/ch-${idx}.xhtml`;
       const title = topic.title || unit.title || `Topic ${n}`;
       const xhtml = xhtmlDocument(title, renderTopicBody(topic, diagrams), "../css/style.css");
-      chapters.push({ id: `ch${idx}`, href, title, xhtml, hasMath: xhtml.includes("<math") });
+      chapters.push({
+        id: `ch${idx}`,
+        href,
+        title,
+        xhtml,
+        hasMath: xhtml.includes("<math"),
+        hasSvg: xhtml.includes("<svg"),
+      });
       items.push({ href, title });
     }
     if (items.length) navSubjects.push({ label: subject.subject_label, items });
@@ -116,8 +138,9 @@ function buildOpf(book: Book, chapters: Chapter[]): string {
     '<item id="css" href="css/style.css" media-type="text/css"/>',
     '<item id="titlepage" href="title.xhtml" media-type="application/xhtml+xml"/>',
     ...chapters.map((ch) => {
-      const props = ch.hasMath ? ' properties="mathml"' : "";
-      return `<item id="${ch.id}" href="${escapeHtml(ch.href)}" media-type="application/xhtml+xml"${props}/>`;
+      const props = [ch.hasMath ? "mathml" : "", ch.hasSvg ? "svg" : ""].filter(Boolean).join(" ");
+      const attr = props ? ` properties="${props}"` : "";
+      return `<item id="${ch.id}" href="${escapeHtml(ch.href)}" media-type="application/xhtml+xml"${attr}/>`;
     }),
   ];
   const spine = [

@@ -67,7 +67,7 @@ backend/tests/test_export.py
 | 1b | **Mobile preview adoption** *(deferred)* — rewire `contentHtml.ts` to consume the shared core. Split out of M1 so it doesn't destabilise the shipping app; needs the `compiler/`↔`mobile/` types/workspace-sharing decision first. | no | no drift |
 | 2 | **EPUB3 packager** *(done)* — `epub.ts`: valid EPUB3 OCF (stored `mimetype` first, `container.xml`, OPF manifest+spine with `dcterms:modified` and per-chapter `properties="mathml"`, `nav.xhtml` TOC grouped by subject, one XHTML per content-bearing topic, shared CSS, inline MathML). Static quizzes. `marked` void elements self-closed for XML. `compile-epub` CLI. | no | a `.epub` |
 | 3 | **Validation gate** *(done)* — jest gate reads the zip back and asserts XML well-formedness (every `.xhtml`/`.opf`/`.xml`), OCF structure, manifest hrefs resolve, and zero script/CDN refs — on both a synthetic book and the real 17-topic book (→17 well-formed chapters). `scripts/epubcheck.sh` runs the authoritative epubcheck when Java is available (degrades gracefully otherwise). | no | validated, offline-proven |
-| 4 | **Diagrams for real** — wire `@mermaid-js/mermaid-cli` behind `DiagramRenderer`; embed SVG. | Chromium | diagrams |
+| 4 | **Diagrams for real** *(done)* — `mermaid.ts`: async two-pass render (collect unique sources → pre-render each to SVG → embed inline), behind the `DiagramRenderer` seam. `MermaidCliRenderer` uses `@mermaid-js/mermaid-cli` (Chromium) via a native dynamic import; it's an **optional, non-committed** tool (`npm i @mermaid-js/mermaid-cli` in `compiler/`), opt-in via `compile-epub --mermaid`. A failed diagram falls back to the placeholder. Chapters with SVG get `properties="...svg"`. Tested with a fake renderer (CI-safe); proven end-to-end on the real book (108 diagrams → 5 MB EPUB, all `<svg>`, 0 placeholders, 0 scripts, well-formed). | Chromium (optional) | diagrams |
 | 5 | **Backend export endpoint** — `POST /api/v1/export` job (key-free, job/poll UX like `/structure`) → runs the compiler → streams the `.epub`; wire `main.py`; `test_export.py`. | — | backend service |
 
 Milestones 1–3 produce a validated, offline EPUB **with maths** before introducing
@@ -78,6 +78,10 @@ the Chromium dependency (M4) or the backend service (M5).
 - **Headless Chromium** (mermaid-cli) is a fat backend-image dependency — hence M4,
   isolated behind `DiagramRenderer` so we can later swap a Kroki sidecar or
   pre-render diagrams at authoring time.
+- **Diagram render speed** — M4 renders sequentially, one Chromium pass per
+  diagram (the real 108-diagram book took ~7 min). Follow-ups: render in
+  parallel / reuse one browser, cache by source hash, or move diagram rendering
+  to authoring time. Not a foundation blocker.
 - **XHTML well-formedness** — EPUB3 is XML-strict; `marked` HTML must serialize as
   XHTML (self-closing tags, entities). Verified by `epubcheck`, not by eye.
 - **Render duplication** — M1 unifies the renderer *first* so the artifact can't
