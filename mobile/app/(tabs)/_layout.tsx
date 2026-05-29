@@ -18,7 +18,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Query",
+          // Header hidden: the home screen renders its own branded hero.
+          headerShown: false,
           tabBarLabel: "Query",
         }}
       />
