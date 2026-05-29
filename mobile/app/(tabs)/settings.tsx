@@ -15,6 +15,7 @@ import {
   maskApiKey,
   saveApiKey,
 } from "@/secure/keyStore";
+import { BRAND_NAME } from "@/constants/brand";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
 export default function SettingsScreen() {
@@ -130,7 +131,7 @@ export default function SettingsScreen() {
 
       <Text style={styles.sectionLabel}>About</Text>
       <View style={styles.aboutCard}>
-        <AboutRow label="App" value="StudyBuddy Q" />
+        <AboutRow label="App" value={BRAND_NAME} />
         <AboutRow label="Version" value="0.1.0 (MVP)" />
         <AboutRow label="Key model" value="claude-sonnet-4-6" />
       </View>

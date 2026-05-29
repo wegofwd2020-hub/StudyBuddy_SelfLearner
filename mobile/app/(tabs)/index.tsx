@@ -8,12 +8,14 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { submitGenerate } from "@/api/client";
 import { loadApiKey } from "@/secure/keyStore";
 import { loadLastLesson } from "@/storage/lessonStore";
 import { LevelPicker } from "@/components/LevelPicker";
 import { DEFAULT_LEVEL } from "@/constants/levels";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/constants/brand";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import type { StoredLesson } from "@/storage/lessonStore";
 
@@ -85,86 +87,97 @@ export default function HomeScreen() {
   const canGenerate = topic.trim().length > 0 && !submitting;
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
-      {hasKey === false && (
-        <Pressable
-          style={styles.keyBanner}
-          onPress={() => router.push("/settings")}
-          accessibilityRole="button"
-          accessibilityLabel="API key not set — tap to open Settings"
-        >
-          <Text style={styles.keyBannerText}>
-            No API key set.{" "}
-            <Text style={styles.keyBannerLink}>Open Settings →</Text>
-          </Text>
-        </Pressable>
-      )}
-
-      <Text style={styles.label}>What do you want to learn?</Text>
-      <TextInput
-        style={styles.topicInput}
-        placeholder="e.g. Quadratic formula, TCP three-way handshake, photosynthesis..."
-        placeholderTextColor={colors.textMuted}
-        value={topic}
-        onChangeText={setTopic}
-        multiline
-        maxLength={200}
-        returnKeyType="done"
-        blurOnSubmit
-        accessibilityLabel="Topic input"
-      />
-
-      <Text style={styles.label}>Level</Text>
-      <LevelPicker value={level} onChange={setLevel} />
-
-      {errorMsg && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{errorMsg}</Text>
-        </View>
-      )}
-
-      <Pressable
-        style={[styles.generateBtn, !canGenerate && styles.generateBtnDisabled]}
-        onPress={handleGenerate}
-        disabled={!canGenerate}
-        accessibilityRole="button"
-        accessibilityLabel="Generate lesson"
-        accessibilityState={{ disabled: !canGenerate }}
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
       >
-        {submitting ? (
-          <ActivityIndicator color={colors.primaryText} />
-        ) : (
-          <Text style={styles.generateBtnText}>Generate lesson</Text>
-        )}
-      </Pressable>
-
-      {lastLesson && (
-        <View style={styles.lastLessonCard}>
-          <Text style={styles.lastLessonTitle}>Last lesson</Text>
-          <Text style={styles.lastLessonTopic}>{lastLesson.lesson.topic}</Text>
-          <Text style={styles.lastLessonMeta}>
-            {lastLesson.lesson.level} ·{" "}
-            {new Date(lastLesson.savedAt).toLocaleDateString()}
-          </Text>
-          <Pressable
-            style={styles.viewBtn}
-            onPress={() => router.push(`/lesson/${lastLesson.jobId}`)}
-            accessibilityRole="button"
-            accessibilityLabel="View last lesson"
-          >
-            <Text style={styles.viewBtnText}>View →</Text>
-          </Pressable>
+        <View style={styles.hero} accessibilityRole="header">
+          <Text style={styles.wordmark}>{BRAND_NAME}</Text>
+          <Text style={styles.tagline}>{BRAND_TAGLINE}</Text>
         </View>
-      )}
-    </ScrollView>
+
+        {hasKey === false && (
+          <Pressable
+            style={styles.keyBanner}
+            onPress={() => router.push("/settings")}
+            accessibilityRole="button"
+            accessibilityLabel="API key not set — tap to open Settings"
+          >
+            <Text style={styles.keyBannerText}>
+              No API key set.{" "}
+              <Text style={styles.keyBannerLink}>Open Settings →</Text>
+            </Text>
+          </Pressable>
+        )}
+
+        <Text style={styles.label}>What do you want to learn?</Text>
+        <TextInput
+          style={styles.topicInput}
+          placeholder="e.g. Quadratic formula, TCP three-way handshake, photosynthesis..."
+          placeholderTextColor={colors.textMuted}
+          value={topic}
+          onChangeText={setTopic}
+          multiline
+          maxLength={200}
+          returnKeyType="done"
+          blurOnSubmit
+          accessibilityLabel="Topic input"
+        />
+
+        <Text style={styles.label}>Level</Text>
+        <LevelPicker value={level} onChange={setLevel} />
+
+        {errorMsg && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{errorMsg}</Text>
+          </View>
+        )}
+
+        <Pressable
+          style={[styles.generateBtn, !canGenerate && styles.generateBtnDisabled]}
+          onPress={handleGenerate}
+          disabled={!canGenerate}
+          accessibilityRole="button"
+          accessibilityLabel="Generate lesson"
+          accessibilityState={{ disabled: !canGenerate }}
+        >
+          {submitting ? (
+            <ActivityIndicator color={colors.primaryText} />
+          ) : (
+            <Text style={styles.generateBtnText}>Generate lesson</Text>
+          )}
+        </Pressable>
+
+        {lastLesson && (
+          <View style={styles.lastLessonCard}>
+            <Text style={styles.lastLessonTitle}>Continue</Text>
+            <Text style={styles.lastLessonTopic}>{lastLesson.lesson.topic}</Text>
+            <Text style={styles.lastLessonMeta}>
+              {lastLesson.lesson.level} ·{" "}
+              {new Date(lastLesson.savedAt).toLocaleDateString()}
+            </Text>
+            <Pressable
+              style={styles.viewBtn}
+              onPress={() => router.push(`/lesson/${lastLesson.jobId}`)}
+              accessibilityRole="button"
+              accessibilityLabel="Continue last lesson"
+            >
+              <Text style={styles.viewBtnText}>Continue →</Text>
+            </Pressable>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.background,
@@ -172,6 +185,25 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
     gap: spacing.md,
+  },
+  hero: {
+    alignItems: "center",
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  wordmark: {
+    fontSize: typography.sizeXxl,
+    fontWeight: "800",
+    color: colors.text,
+    letterSpacing: 0.5,
+  },
+  tagline: {
+    fontSize: typography.sizeSm,
+    fontWeight: "600",
+    color: colors.primary,
+    textTransform: "uppercase",
+    letterSpacing: 2,
   },
   keyBanner: {
     backgroundColor: colors.warning + "22",
