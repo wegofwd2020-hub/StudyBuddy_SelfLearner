@@ -67,6 +67,9 @@ coverage.xml
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/
 
+# ── Exported book artifacts (data copies from OnDemand, not source) ───────────
+artifacts/
+
 # ── Node ──────────────────────────────────────────────────────────────────────
 node_modules/
 npm-debug.log
