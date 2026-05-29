@@ -1,117 +1,136 @@
-# ADR-005 — Multi-provider LLM support (Anthropic-only vs. provider abstraction)
+# ADR-005 — Multi-provider LLM support + hybrid key handling
 
-**Status:** Proposed — **STUB, decision not yet made**
-**Date:** 2026-05-29
-**Would revise:** SCOPE.md **D1** (BYOK — *Anthropic* key) and **D9** (key handling
-Pattern B — per-request passthrough), and the framing of Q as "a purpose-built
-**Anthropic** client."
-**Touches:** ADR-001 (BYOK security model) — env-var/secrets-manager keys are a
-different threat model than per-request BYOK passthrough. ADR-002 (vendoring) —
-the `pipeline/` layer is currently Anthropic-only by design.
+**Status:** Accepted — 2026-05-29
+**Decision-maker:** Sivakumar Mambakkam
+**Revises:** SCOPE.md **D1** (BYOK is no longer the *only* model — see hybrid
+decision below) and **D9** (per-request passthrough is now one of two key paths).
+Reframes the product from "a purpose-built **Anthropic** client" to "a
+**provider-agnostic** learning-content generator."
+**Amends:** ADR-001 (BYOK security model → now **hybrid**: managed-key vault +
+BYOK passthrough). ADR-004 **D6** (subscription now includes a **metered token
+allowance**, because managed generations are billed to us). Pulls **accounts/auth
+and usage metering** forward to MVP (was v1.1+).
 
 ---
 
 ## Context
 
-`docs/llm-providers.md` (merged 2026-05-29, PR #35) documents a **multi-provider
-LLM abstraction** — one `LLMProvider` interface fronting Anthropic plus four
-OpenAI-compatible providers (OpenAI, DeepSeek, Qwen, Gemma), with a factory,
-provider registry, and typed error hierarchy.
+`docs/llm-providers.md` (PR #35) proposed a multi-provider LLM abstraction
+(Anthropic + the OpenAI-compatible four: OpenAI, DeepSeek, Qwen, Gemma). ADR-005
+began as a stub to force a deliberate decision, because the proposal reversed
+locked decisions (D1/D9, Anthropic-only) and conflicted with ADR-001's key model.
 
-That document describes an `llm/` package that **does not exist in this repo**.
-The actual provider code is `pipeline/providers/` — Anthropic-only, with a
-deliberately different interface:
+Two product calls were made (2026-05-29) that resolve it:
 
-| `docs/llm-providers.md` describes | This repo actually has |
-|---|---|
-| `llm/` package: `factory.py`, `config.py`, `content_service.py`, … | `pipeline/providers/` only |
-| `generate(LLMRequest) -> LLMResponse` (rich typed objects) | `generate(prompt: str) -> tuple[str, int, int]` |
-| Typed exception hierarchy (`LLMError` + 5 subclasses) | plain `RuntimeError` |
-| 5 providers, keys from env vars / secrets manager | Anthropic only, key passed positionally (BYOK) |
-| Anthropic default `claude-opus-4-8` | pinned `claude-sonnet-4-6` |
+1. **Reach other LLMs** — the product should not be tied to a single vendor.
+2. **Key handling = hybrid** — managed keys (we hold them) as the **default**,
+   with **optional BYOK** as a power-user path.
 
-So the doc is **aspirational / external** relative to the current codebase. It
-also points in a direction that **contradicts locked decisions**:
+The driver is **consumer friction**: pasting an API key is a hard barrier for a
+non-technical adult learner. A "subscribe and it just works" flow converts far
+better, while keeping BYOK available for users who want to bypass usage caps and
+pay their vendor directly.
 
-- **D1/D9 and the product premise.** Q is framed as "a purpose-built *Anthropic*
-  client" with BYOK. Supporting OpenAI/DeepSeek/Qwen/Gemma is a real pivot, not
-  an implementation detail.
-- **ADR-001 key model.** The doc's pattern reads provider keys from server-side
-  env vars / a secrets manager. Q's model is the opposite: the *user's* key
-  arrives per-request in the `/generate` body, lives in Redis with a TTL, and is
-  shredded after use — never read from server env. A multi-provider layer would
-  have to preserve per-provider BYOK passthrough, not adopt server-held keys.
-
-This ADR exists to **force that decision deliberately** rather than let a merged
-doc imply a direction by default.
-
----
-
-## The question
-
-**Does StudyBuddy Q stay Anthropic-only, or does it adopt a provider-abstraction
-layer that lets the user (or us) choose among multiple LLM vendors?**
-
-And if multi-provider: **does BYOK extend to every provider** (the user brings a
-key per chosen vendor), or does the product hold non-Anthropic keys server-side
-(which changes the money model and the ADR-001 threat model)?
-
----
-
-## Options (to be evaluated)
-
-1. **Status quo — Anthropic-only.** Keep `pipeline/providers/` single-vendor.
-   Treat `docs/llm-providers.md` as exploratory/external and mark or remove it.
-   Lowest complexity; keeps the BYOK + ADR-001 discipline intact; matches the
-   "purpose-built Anthropic client" positioning.
-
-2. **Provider abstraction, BYOK-per-provider.** Introduce an `LLMProvider`
-   seam (the OpenAI-compatible-vs-Anthropic split the doc describes), but keep
-   **every** key as user-supplied per-request passthrough. Preserves ADR-001;
-   adds real surface (interface, registry, per-provider error mapping, schema
-   validation across models of varying instruction-following quality).
-
-3. **Provider abstraction, server-held keys.** We hold provider keys; user pays
-   us (not BYOK). Largest change — reverses D1 outright, changes the money model
-   (cf. ADR-004 D6), and replaces the ADR-001 transient-key model with
-   at-rest secret management. Highest compliance/billing burden.
+> Note: the `llm/` package `docs/llm-providers.md` describes **still does not
+> exist** — the live code is Anthropic-only `pipeline/providers/`. This ADR
+> authorises building the layer; it is not yet built.
 
 ---
 
 ## Decision
 
-**TBD.** No decision has been made. This stub captures the question and the
-constraints; fill in the chosen option, rationale, and consequences before any
-multi-provider code lands.
+### D1 — Provider abstraction
+
+Adopt an `LLMProvider` seam fronting multiple vendors. Anthropic keeps its own
+SDK; the OpenAI-compatible providers (OpenAI, DeepSeek, Qwen, Gemma) share one
+client. Application code talks to a single interface; provider is selectable at
+runtime. This is the shape `docs/llm-providers.md` describes — to be built in
+`pipeline/` (or a new `llm/` package), Anthropic-only today.
+
+### D2 — Hybrid key handling (managed default + optional BYOK)
+
+| Path | Who holds the key | Who pays tokens | Usage caps |
+|---|---|---|---|
+| **Managed (default)** | **We do** — server-side vault | **We do** (covered by subscription token allowance) | Yes — metered, capped per plan |
+| **BYOK (optional)** | User (per-request passthrough, per provider) | User (billed by vendor) | No app-imposed token cap |
+
+- **Managed** is the default consumer experience. Provider keys are **our**
+  secrets, held in a secrets manager, rotated, never logged. This is the
+  **at-rest vault** model — distinct from ADR-001's transient-key model.
+- **BYOK** remains available per provider and **retains ADR-001's discipline**:
+  key in the request body, Redis with TTL, used + shredded, never persisted,
+  never logged.
+
+### D3 — ADR-001 becomes hybrid, not replaced
+
+ADR-001's per-request passthrough is **preserved for the BYOK path**. The managed
+path adds a **second, separate** key-handling regime (vault + rotation). Both
+share the non-negotiable rule: **no key — ours or the user's — ever reaches a log
+line, DB row, or traceback.**
+
+### D4 — Money model (amends ADR-004 D6)
+
+ADR-004 D6 said the subscription "covers the app + upkeep only… never covers
+Anthropic token cost." That holds **only for BYOK users**. For **managed** users,
+the subscription **includes a metered token allowance** and we carry the vendor
+cost. Pricing must therefore be margin-aware, with per-plan token caps.
+
+### D5 — Accounts, metering, and abuse control move to MVP
+
+Managed billing cannot be anonymous. **Accounts/auth (was v1.1+) and per-user
+usage metering + rate limits + hard caps move to MVP.** D18's "~100-lesson
+fair-use cap" is reinterpreted as a **cost-control lever**, not just storage.
+
+---
+
+## Phasing
+
+1. **`LLMProvider` seam** — refactor `pipeline/providers/` to the interface;
+   Anthropic first (parity with today), then the OpenAI-compatible client.
+2. **BYOK multi-provider** — extend the existing passthrough path to N providers
+   (per-provider key in body; ADR-001 discipline per provider).
+3. **Managed-key vault** — secrets manager, rotation, per-job use; the new at-rest
+   regime. Gated behind accounts.
+4. **Accounts + metering** — auth, per-user usage records, rate limits, plan caps.
+5. **Billing** — subscription token allowance + overage policy.
 
 ---
 
 ## Open questions
 
-- **Why multi-provider at all?** Cost, redundancy/failover, user preference,
-  access in regions where Anthropic isn't available, or model-capability fit?
-  The driving requirement determines whether option 2 or 3 is even relevant.
-- **Schema-validation robustness.** The pipeline validates every response against
-  a JSON schema and retries 3×. Non-Anthropic models vary in JSON
-  instruction-following — does the retry budget hold, or do per-provider prompt
-  tweaks become necessary?
-- **Default-model drift.** `pipeline/config.py` pins `claude-sonnet-4-6`. A
-  multi-provider registry needs a per-provider default and a policy for keeping
-  those current (the doc's model names, e.g. `deepseek-v4-pro`, are unverified).
-- **Key handling per provider.** If BYOK-per-provider (option 2), how does the
-  mobile app store and pass N keys, and how does Redis TTL/shredding generalise?
-- **Disposition of `docs/llm-providers.md`.** If option 1, the doc should be
-  removed or clearly marked exploratory (it references `import llm` and
-  `requirements-llm.txt`, neither of which exist). If 2/3, the doc must be
-  rewritten to match the real interface, the Sonnet default, and BYOK.
+- **Provider defaults & model pinning** — per-provider default model and a policy
+  to keep them current (the doc's `deepseek-v4-pro` etc. are unverified). Anthropic
+  default stays `claude-sonnet-4-6` (not `claude-opus-4-8` as the doc states).
+- **Schema-validation robustness** — non-Anthropic models vary in JSON
+  instruction-following; does the 3× retry budget hold, or are per-provider prompt
+  tweaks needed?
+- **Allowance sizing & overage** — token allowance per plan, and what happens at
+  the cap (block / degrade / offer BYOK / paid overage).
+- **Abuse vectors** — managed keys mean our spend; need rate limits, anomaly
+  detection, and possibly per-account spend ceilings.
+- **Vendor ToS** — reselling/proxying provider tokens under our account may carry
+  vendor-specific terms; verify per provider before launch.
+
+---
+
+## Consequences
+
+**Positive:** removes the BYOK friction wall for the default user; vendor-agnostic
+(failover, cost, capability, regional access); BYOK preserved for power users and
+ADR-001 stays intact for that path; subscription becomes a clean "it just works".
+
+**Negative:** large new surface — provider abstraction, an at-rest key vault,
+accounts/auth + metering + rate limiting at MVP (earlier than planned), and a
+margin-aware billing model. We now carry token cost and a commercial relationship
+with vendors (reverses CLAUDE.md's "no commercial relationship for token usage").
+Two key regimes to secure instead of one.
 
 ---
 
 ## References
 
-- `docs/llm-providers.md` — the multi-provider design this ADR adjudicates (PR #35).
-- ADR-001 (BYOK security) — per-request passthrough key model that any
-  multi-provider design must preserve or explicitly revise.
-- ADR-002 (vendoring) — `pipeline/` is Anthropic-only by design today.
-- SCOPE.md §5 — **D1** (BYOK), **D9** (Pattern B passthrough).
-- CLAUDE.md — "purpose-built Anthropic client"; pipeline pins `claude-sonnet-4-6`.
+- `docs/llm-providers.md` — the multi-provider design (PR #35); layer not yet built.
+- ADR-001 (BYOK security) — **amended to hybrid**; passthrough retained for BYOK.
+- ADR-004 **D6** (money model) — **amended**; managed plans include a token allowance.
+- ADR-006 — concurrent rebrand (StudyBuddy Q → Mentible); independent of this.
+- SCOPE.md §5 — **D1/D9** reframed; **D18** reinterpreted as a cost lever.
