@@ -1,13 +1,13 @@
 # Branding & Naming Analysis
 
-> **Status:** Draft for discussion — **revised 2026-05-29** to align with this
-> repo's locked decisions (SCOPE.md §5) and ADR-004. Earlier drafts analysed the
-> *broader StudyBuddy family*; this version is scoped to **StudyBuddy Q**.
-> **Scope:** Competitive landscape, name-collision findings, trademark risk, and
-> candidate names — the last of which are relevant **only if** the locked brand
-> is revisited (see **ADR-006**).
-> **Locked brand:** **StudyBuddy Q** (D5, D19). **Locked audience:**
-> **self-learners only** (D6). A change to either requires ADR-006, not this doc.
+> **Status:** **Decision made — ADR-006 Accepted (2026-05-29).** The brand
+> **rebrands from "StudyBuddy Q" to "Mentible"** *(pending the mandatory
+> trademark/domain sweep — see §3/§5)*. Audience stays **self-learners +
+> professionals** (D6 reaffirmed; no school funnel). This doc is now the research
+> record behind that decision; the candidate names in §4 are the **fallback
+> shortlist** if "Mentible" fails clearance.
+> **New brand:** **Mentible** *(provisional until cleared)* — supersedes D5/D19.
+> **Audience:** adult self-learners, incl. professionals (D6).
 
 ---
 
@@ -92,69 +92,64 @@ the name:
 flags this directly — the brand must be watched for **Amazon Q** trademark
 conflict, and should **never collapse to a bare "Q"** in marketing.
 
-**Implication:** the locked brand **"StudyBuddy Q"** faces uphill SEO /
-discoverability (crowded "StudyBuddy") *and* a trademark watch-out on the "Q"
-(Amazon Q). This does **not** by itself overturn the locked brand (D5/D19) — but
-it makes the **mandatory pre-alpha trademark sweep** (USPTO TESS, Google Play,
-App Store) a gating task, and it argues for a style rule that always renders the
-full **"StudyBuddy Q"**.
+**Implication:** these two risks (crowded "StudyBuddy" + Amazon-Q-adjacent "Q")
+are why **ADR-006 decided to rebrand to "Mentible"** — a name that escapes both.
+The same gating discipline now applies to the *new* name: **the mandatory
+pre-alpha trademark sweep** (USPTO TESS, Google Play, App Store) + domain check
+must clear **"Mentible"** before it is locked.
 
 > ⚠️ This document flags collision risk; it does **not** clear any name legally.
-> A proper **trademark + domain availability search** is required before alpha —
-> for "StudyBuddy Q" itself, and for any alternative considered under ADR-006.
+> "Mentible" is **provisional** until a proper **trademark + domain availability
+> search** passes. If it fails, fall back to the §4 shortlist and re-clear.
 
 ---
 
-## 4. Candidate names (only relevant if ADR-006 revisits the locked brand)
+## 4. Chosen name + fallback shortlist
 
-> The public brand is **locked to "StudyBuddy Q"** (D5/D19). The names below are
-> **not recommendations** — they are raw options retained for the event that
-> **ADR-006** decides the "StudyBuddy" crowding / Amazon Q risk warrants a
-> rebrand. Audience-leaning notes are kept for completeness but **schools/tutors
-> are out of scope** for Q (D6); for Q, only the self-learner column applies.
+**Chosen (ADR-006): Mentible** — tagline *"Knowledge in. Lessons out."* It is
+vendor-neutral (fits the multi-provider direction, ADR-005), not boxed into
+"study/school," and escapes both the "StudyBuddy" crowding and the Amazon-Q risk.
+**Provisional until the trademark/domain sweep passes** (§5).
+
+**Fallback shortlist** — if "Mentible" fails clearance, re-clear in this order:
 
 | Name | Tagline | Note |
 |------|---------|------|
 | **Knowmad** | "Build the course you wish existed." | Existing coined term ("knowledge nomad") — prior use; verify. |
-| **SelfSyllabus** | "You bring the curiosity. We build the curriculum." | On-audience (self-learner); descriptive, weaker mark. |
-| **Upskool** *(Upskule)* | "Teach yourself anything, structured." | Self-learner-leaning; spelling collisions likely. |
 | **Curriculo** | "From idea to ready-to-study material." | Unverified; check TESS/domains. |
-| **Mentible** | "Knowledge in. Lessons out." | Unverified; check TESS/domains. |
-| **Tutela** | "Every topic, made teachable." | ⚠️ Existing trademark (network analytics) — high collision risk. |
-| **Studyforge** | "Where topics become study material." | Crowded "forge/smith" edtech space. |
+| **SelfSyllabus** | "You bring the curiosity. We build the curriculum." | On-audience; descriptive, weaker mark. |
+| **Upskool** *(Upskule)* | "Teach yourself anything, structured." | Spelling collisions likely. |
+| **Studyforge** | "Where topics become study material." | Crowded "forge/smith" edtech space; retains "study". |
+| ~~**Tutela**~~ | — | ❌ Excluded — existing trademark (network analytics). |
 
-On the **"Q = quiz"** idea raised in earlier drafts: that misreads the brand —
-**Q = Query** (§1). A quiz-specific wordmark (e.g. "QuizCraft") could at most be a
-*feature* sub-brand, never the umbrella; the core value is scoped material
-generation, not just questions.
+The "Q = Query" rationale retires with the old brand (ADR-006 D1).
 
 ---
 
-## 5. Recommendation
+## 5. Next steps (post-decision)
 
-- **Hold the locked brand: "StudyBuddy Q."** Treat §4 as contingency input for
-  ADR-006, not a rename proposal.
-- **Make the trademark sweep a gating pre-alpha task** (CLAUDE.md pitfall #6):
-  clear **"StudyBuddy Q"** on USPTO TESS, Google Play, and the App Store, and run
-  an **Amazon Q** conflict assessment.
-- **Adopt a usage rule:** always render the full **"StudyBuddy Q"** — never bare
-  "Q."
-- The **"input → output" tagline shape** is strong and brand-agnostic — e.g.
-  *"Knowledge in. Lessons out."* — usable whatever ADR-006 decides.
+- **Clear "Mentible" before locking it** (CLAUDE.md pitfall #6): USPTO TESS,
+  Google Play, App Store, and `.com`/`.ai` domains. This is a **gating pre-alpha
+  task**. If it fails, take the §4 fallback shortlist in order and re-clear.
+- **Ratify into canonical docs** once cleared: update CLAUDE.md + SCOPE.md
+  (D5/D19) to "Mentible" and sweep "StudyBuddy Q" references repo-wide.
+- **Two-app naming (ADR-004):** decide whether the free reader shares "Mentible,"
+  takes a sub-brand, or stands alone.
+- **Tagline:** lead with the **input → output** shape — *"Knowledge in. Lessons
+  out."*
 
 ---
 
-## 6. Open questions / next steps (tracked in ADR-006)
+## 6. Decisions recorded (ADR-006)
 
-1. **Brand name:** keep "StudyBuddy Q" or revisit given StudyBuddy crowding +
-   Amazon Q risk? (ADR-006 Q1)
-2. **Audience scope:** stay self-learner-only (D6), or re-expand — which would
-   reverse a locked decision and re-import OnDemand's school/compliance concerns?
-   (ADR-006 Q2)
-3. **Two-app naming (ADR-004):** does the free reader share the brand, get a
-   sub-brand, or stand alone?
-4. **Clearance:** run trademark + domain (.com / .ai) checks for "StudyBuddy Q"
-   (and any ADR-006 alternative) before launch decisions.
+1. **Brand name:** ✅ **Rebrand "StudyBuddy Q" → "Mentible"** (provisional until
+   cleared). Drops the crowded "StudyBuddy" family and the Amazon-Q risk.
+2. **Audience scope:** ✅ **Stay self-learner-only** (D6 reaffirmed), widened to
+   make explicit that **adult professionals** are in scope. Schools/tutors/OnDemand
+   integration **rejected** (would re-import multi-tenancy + FERPA/COPPA).
+3. **Two-app naming (ADR-004):** ⏳ open — does the free reader share "Mentible,"
+   get a sub-brand, or stand alone?
+4. **Clearance:** ⏳ run the trademark + domain sweep for "Mentible" before launch.
 
 ---
 
