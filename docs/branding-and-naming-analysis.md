@@ -109,31 +109,46 @@ must clear **"Mentible"** before it is locked.
 **Chosen (ADR-006): Mentible** — tagline *"Knowledge in. Lessons out."* It is
 vendor-neutral (fits the multi-provider direction, ADR-005), not boxed into
 "study/school," and escapes both the "StudyBuddy" crowding and the Amazon-Q risk.
-**Provisional until the trademark/domain sweep passes** (§5).
-
-**Fallback shortlist** — if "Mentible" fails clearance, re-clear in this order:
-
-| Name | Tagline | Note |
-|------|---------|------|
-| **Knowmad** | "Build the course you wish existed." | Existing coined term ("knowledge nomad") — prior use; verify. |
-| **Curriculo** | "From idea to ready-to-study material." | Unverified; check TESS/domains. |
-| **SelfSyllabus** | "You bring the curiosity. We build the curriculum." | On-audience; descriptive, weaker mark. |
-| **Upskool** *(Upskule)* | "Teach yourself anything, structured." | Spelling collisions likely. |
-| **Studyforge** | "Where topics become study material." | Crowded "forge/smith" edtech space; retains "study". |
-| ~~**Tutela**~~ | — | ❌ Excluded — existing trademark (network analytics). |
+**Provisional until clearance** — the preliminary sweep (§4a) leaves it as lead
+but with a "Mentable" conflict that needs **attorney review**.
 
 The "Q = Query" rationale retires with the old brand (ADR-006 D1).
 
 ---
 
-## 5. Next steps (post-decision)
+## 4a. Trademark sweep — preliminary findings (2026-05-29)
 
-- **Clear "Mentible" before locking it** (CLAUDE.md pitfall #6): USPTO TESS,
-  Google Play, App Store, and `.com`/`.ai` domains. This is a **gating pre-alpha
-  task**. If it fails, take the §4 fallback shortlist in order and re-clear.
+A **preliminary** availability sweep (web, app stores, domains) was run on the
+lead name and the fallback shortlist. **This is not legal clearance:** the
+authoritative USPTO/EUIPO register searches could not be completed (those systems
+block automated access), so a trademark attorney's knockout opinion is still
+required before any name is locked.
+
+| Name | Verdict | Distinctiveness | Availability | Key risk found |
+|---|---|---|---|---|
+| **Mentible** | 🟡 Amber — **lead** | High (coined word) | `.com` registered/dormant (expired cert); `.ai` no active site | **"Mentable"** — a mental-health **app** (Cluj-Napoca; class-9 software) **and** US provider **Mentable Wellness PLLC** (Charlotte, NC). One letter off, phonetically identical. Different primary industry helps; **needs attorney review**. |
+| **SelfSyllabus** | 🟡 Amber — **fallback** | Low–medium (descriptive) | **Best — exact name unused; domain likely open** | Crowded "Syllabus" namespace (Simple Syllabus, Syllabus AI…); no direct hit, but a **weak/descriptive mark**. |
+| ~~**Curriculo**~~ | 🔴 Red — **eliminated** | Low (real word) | `.ai`/`.me` taken | Means **"résumé/CV"** in ES/PT (we support `es`); active CV-AI products (Curriculo AI, Curriculo ATS, a Google Play résumé builder). |
+| ~~**Knowmad**~~ | 🔴 Red — **eliminated** | Low (descriptive coinage) | `.com`/`.app`/`.online` taken | Saturated across software/edu/AI (Knowmad Mood, Knowmad Digital Marketing, a Knowmad learning app, Knowmad Inc); "knowledge nomad" = our user. |
+| ~~**Tutela**~~ | 🔴 Excluded | — | — | Existing trademark (network analytics). |
+
+**Trade-off:** the finalist set is **Mentible** (distinctive but contested) vs
+**SelfSyllabus** (available but descriptive). Upskool / Studyforge were not swept
+(weaker candidates; Studyforge retains the "study" baggage we are leaving behind).
+
+---
+
+## 5. Next steps (post-sweep)
+
+- **Attorney knockout search on the finalist** — resolve **Mentible vs Mentable**
+  (likelihood of confusion across classes 9 / 41 / 42) via USPTO TESS + EUIPO (the
+  Mentable app is EU-based) + a trademark attorney's opinion. This is the **gating
+  pre-alpha task**. **SelfSyllabus** is the standing fallback if Mentible fails.
+- **Confirm domains** at a registrar: `mentible.com` looks registered/dormant;
+  check `.ai` and the SelfSyllabus domains.
 - **Ratify into canonical docs** once cleared: update CLAUDE.md + SCOPE.md
-  (D5/D19) to "Mentible" and sweep "StudyBuddy Q" references repo-wide.
-- **Two-app naming (ADR-004):** decide whether the free reader shares "Mentible,"
+  (D5/D19) to the final name and sweep "StudyBuddy Q" references repo-wide.
+- **Two-app naming (ADR-004):** decide whether the free reader shares the brand,
   takes a sub-brand, or stands alone.
 - **Tagline:** lead with the **input → output** shape — *"Knowledge in. Lessons
   out."*
@@ -149,7 +164,9 @@ The "Q = Query" rationale retires with the old brand (ADR-006 D1).
    integration **rejected** (would re-import multi-tenancy + FERPA/COPPA).
 3. **Two-app naming (ADR-004):** ⏳ open — does the free reader share "Mentible,"
    get a sub-brand, or stand alone?
-4. **Clearance:** ⏳ run the trademark + domain sweep for "Mentible" before launch.
+4. **Clearance:** 🟡 preliminary sweep done (§4a) — Mentible leads with a Mentable
+   conflict; Knowmad/Curriculo eliminated; SelfSyllabus the fallback. **Attorney
+   knockout opinion still required** before launch.
 
 ---
 
@@ -160,5 +177,12 @@ listings of: Mindgrasp, StudyFetch, NoteGPT, StudyPDF, HyperWrite, iWeaver,
 Piktochart, MagicSchool AI, SchoolAI, Coursebox, Teachable, Venngage, eSkilled,
 and the several "StudyBuddy"-named products listed in §3.
 
+The §4a trademark sweep additionally reviewed: Mentable app (Cluj-Napoca) and
+Mentable Wellness PLLC (Charlotte, NC); Knowmad Mood, Knowmad Digital Marketing,
+the Knowmad learning app (Google Play) and Knowmad Inc; Curriculo AI, Curriculo
+ATS and the Curriculo Google Play résumé builder; and the Simple Syllabus /
+Syllabus AI cluster. Authoritative USPTO/EUIPO register searches were **not**
+completed (automated access blocked) and remain a required attorney task.
+
 *(Research conducted May 2026. Market and availability change quickly — re-verify
-before launch decisions.)*
+before launch decisions. The sweep is preliminary and is not legal clearance.)*
