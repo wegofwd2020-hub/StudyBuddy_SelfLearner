@@ -149,4 +149,7 @@ export interface BookMeta {
   subjectCount: number;
   unitCount: number;
   updatedAt: string;
+  // Number of topics with generated content (for the books-list progress
+  // readout). Absent on books saved before this field existed.
+  generatedCount?: number;
 }

@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteBook, loadBookIndex } from "@/storage/bookStore";
 import { useResponsive } from "@/hooks/useResponsive";
@@ -105,16 +106,29 @@ export default function BooksScreen() {
           accessibilityRole="button"
           accessibilityLabel={`Open book: ${item.title}`}
         >
+          <Ionicons name="book-outline" size={22} color={colors.primary} />
           <View style={styles.cardMain}>
             <Text style={styles.title} numberOfLines={2}>
               {item.title}
             </Text>
             <Text style={styles.meta}>
               {item.subjectCount} subject{item.subjectCount === 1 ? "" : "s"} ·{" "}
-              {item.unitCount} topic{item.unitCount === 1 ? "" : "s"} ·{" "}
-              {formatDate(item.updatedAt)}
+              {item.unitCount} topic{item.unitCount === 1 ? "" : "s"} · {formatDate(item.updatedAt)}
             </Text>
+            {typeof item.generatedCount === "number" && item.unitCount > 0 && (
+              <Text
+                style={[
+                  styles.progress,
+                  item.generatedCount >= item.unitCount && styles.progressDone,
+                ]}
+              >
+                {item.generatedCount >= item.unitCount
+                  ? `✓ All ${item.unitCount} topics generated`
+                  : `${item.generatedCount} / ${item.unitCount} topics generated`}
+              </Text>
+            )}
           </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           <Pressable
             style={styles.deleteBtn}
             onPress={() => handleDelete(item.id)}
@@ -122,7 +136,7 @@ export default function BooksScreen() {
             accessibilityLabel={`Delete book: ${item.title}`}
             hitSlop={8}
           >
-            <Text style={styles.deleteIcon}>🗑</Text>
+            <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
           </Pressable>
         </Pressable>
       )}
@@ -165,11 +179,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
   },
-  cardMain: { flex: 1, gap: spacing.xs },
+  cardMain: { flex: 1, gap: 2 },
   title: { fontSize: typography.sizeMd, fontWeight: "700", color: colors.text },
   meta: { fontSize: typography.sizeXs, color: colors.textMuted },
+  progress: { fontSize: typography.sizeXs, color: colors.textMuted, marginTop: 2 },
+  progressDone: { color: colors.success, fontWeight: "600" },
   deleteBtn: { padding: spacing.xs },
-  deleteIcon: { fontSize: 18 },
   empty: {
     flex: 1,
     backgroundColor: colors.background,

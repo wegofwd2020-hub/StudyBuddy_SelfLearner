@@ -48,6 +48,7 @@ function toMeta(book: Book): BookMeta {
     subjectCount: book.toc.subjects.length,
     unitCount: countUnits(book.toc),
     updatedAt: book.updatedAt,
+    generatedCount: Object.keys(book.content ?? {}).length,
   };
 }
 

@@ -1,7 +1,10 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteEpub, listEpubs, type EpubMeta } from "@/storage/epubLibrary";
+import { useResponsive } from "@/hooks/useResponsive";
+import { MAX_WIDE_WIDTH } from "@/constants/layout";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
 function formatDate(iso: string): string {
@@ -19,6 +22,8 @@ function formatSize(bytes: number): string {
 export default function LibraryScreen() {
   const router = useRouter();
   const [items, setItems] = useState<EpubMeta[]>([]);
+  const { isTablet, isDesktop } = useResponsive();
+  const numColumns = isDesktop ? 2 : 1;
 
   useFocusEffect(
     useCallback(() => {
@@ -56,19 +61,22 @@ export default function LibraryScreen() {
 
   return (
     <FlatList
+      key={numColumns}
       style={styles.list}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={[styles.listContent, isTablet && styles.listContentWide]}
       data={items}
       keyExtractor={(item) => item.id}
+      numColumns={numColumns}
+      columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
       renderItem={({ item }) => (
         <Pressable
-          style={styles.card}
+          style={[styles.card, numColumns > 1 && styles.cardGrid]}
           onPress={() => router.push(`/book/read/${item.id}`)}
           accessibilityRole="button"
           accessibilityLabel={`Open book: ${item.title}`}
         >
-          <Text style={styles.cardIcon}>📖</Text>
+          <Ionicons name="book" size={22} color={colors.primary} />
           <View style={styles.cardMain}>
             <Text style={styles.title} numberOfLines={2}>
               {item.title}
@@ -77,6 +85,7 @@ export default function LibraryScreen() {
               EPUB3 · {formatSize(item.sizeBytes)} · {formatDate(item.compiledAt)}
             </Text>
           </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           <Pressable
             style={styles.deleteBtn}
             onPress={() => handleDelete(item.id)}
@@ -84,7 +93,7 @@ export default function LibraryScreen() {
             accessibilityLabel={`Delete from library: ${item.title}`}
             hitSlop={8}
           >
-            <Text style={styles.deleteIcon}>🗑</Text>
+            <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
           </Pressable>
         </Pressable>
       )}
@@ -95,6 +104,9 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   list: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.md },
+  listContentWide: { maxWidth: MAX_WIDE_WIDTH, width: "100%", alignSelf: "center" },
+  columnWrapper: { gap: spacing.sm },
+  cardGrid: { flex: 1 },
   separator: { height: spacing.sm },
   card: {
     backgroundColor: colors.surface,
@@ -106,12 +118,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
   },
-  cardIcon: { fontSize: 22 },
-  cardMain: { flex: 1, gap: spacing.xs },
+  cardMain: { flex: 1, gap: 2 },
   title: { fontSize: typography.sizeMd, fontWeight: "700", color: colors.text },
   meta: { fontSize: typography.sizeXs, color: colors.textMuted },
   deleteBtn: { padding: spacing.xs },
-  deleteIcon: { fontSize: 18 },
   empty: {
     flex: 1,
     backgroundColor: colors.background,
