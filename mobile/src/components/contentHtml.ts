@@ -141,11 +141,12 @@ function htmlDocument(dataJson: string, bodyJs: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Gelasio = a Georgia-metric serif, so the reader's body text matches the
-     EPUB/PDF (Georgia) and renders a true serif even on devices/emulators that
-     ship no serif font. Falls back to the generic serif offline. -->
+<!-- Lora = a readable book serif loaded from the web; "Noto Serif" is the
+     on-device fallback so body prose renders serif even offline / when the web
+     font is unavailable (the generic serif keyword is not reliable on the
+     Android WebView). -->
 <link rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+  href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap">
 <link rel="stylesheet"
   href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
   crossorigin="anonymous">
@@ -162,7 +163,7 @@ function htmlDocument(dataJson: string, bodyJs: string): string {
     --warning: ${colors.warning};
     /* Match the EPUB/PDF artifact: serif body for prose, sans for headings/UI. */
     --sans: -apple-system, "Helvetica Neue", "Segoe UI", Roboto, "Liberation Sans", Arial, sans-serif;
-    --serif: 'Gelasio', "Noto Serif", Georgia, "Times New Roman", "Liberation Serif", serif;
+    --serif: 'Lora', "Noto Serif", Georgia, "Times New Roman", "Liberation Serif", serif;
     color-scheme: dark;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
