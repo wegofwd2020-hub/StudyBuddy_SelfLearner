@@ -5,17 +5,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { loadBook, saveBook, setTopicContent } from "@/storage/bookStore";
 import { loadApiKey } from "@/secure/keyStore";
 import { useGenerateAll, type TopicProgress } from "@/hooks/useGenerateAll";
-import { LevelPicker } from "@/components/LevelPicker";
+import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
 import { useResponsive } from "@/hooks/useResponsive";
 import { MAX_WIDE_WIDTH } from "@/constants/layout";
-import { DEFAULT_LEVEL } from "@/constants/levels";
+import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import type { Book } from "@/types/book";
 import type { LessonOutput } from "@/types/lesson";
@@ -72,18 +71,9 @@ export default function GenerateAllScreen() {
 
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
-  const [level, setLevel] = useState(DEFAULT_LEVEL);
-  // Whole-book page target. Held as a raw digit string (empty = no limit) so the
-  // input never reformats mid-edit — reformatting a controlled TextInput on each
-  // keystroke triggers RN's cursor-jump bug and makes typing feel broken.
-  const [pagesText, setPagesText] = useState("");
-  const totalPages = Math.max(0, parseInt(pagesText, 10) || 0);
-  // Step the page count with buttons — works without a soft keyboard (the
-  // emulator doesn't always render one). 0 clears back to the placeholder.
-  const adjustPages = (delta: number) => {
-    const next = Math.min(999, Math.max(0, totalPages + delta));
-    setPagesText(next === 0 ? "" : String(next));
-  };
+  // The book's generation template (level / depth / pages). Edits persist back
+  // to the book, so the template is the single source of truth for this book.
+  const [params, setParams] = useState<GenerationParams>(DEFAULT_GENERATION_PARAMS);
   const { isDesktop } = useResponsive();
 
   // Hold the live book in a ref so per-topic persistence always builds on the
@@ -97,6 +87,7 @@ export default function GenerateAllScreen() {
       if (mounted) {
         bookRef.current = loaded;
         setBook(loaded);
+        if (loaded?.generationParams) setParams(loaded.generationParams);
         setLoading(false);
       }
     })();
@@ -132,14 +123,24 @@ export default function GenerateAllScreen() {
     [],
   );
 
+  // Persist template edits back to the book so they stick across sessions.
+  const handleParamsChange = useCallback((next: GenerationParams) => {
+    setParams(next);
+    const base = bookRef.current;
+    if (!base) return;
+    const updated = { ...base, generationParams: next, updatedAt: new Date().toISOString() };
+    bookRef.current = updated;
+    setBook(updated);
+    void saveBook(updated);
+  }, []);
+
   const { progress, running, finished, doneCount, failedCount, total, errorMsg, start, cancel } =
     useGenerateAll({
       toc: book?.toc ?? { subjects: [] },
-      level,
+      params,
       getApiKey,
       onTopicDone: handleTopicDone,
       alreadyDone: initialDoneIds,
-      totalPages,
     });
 
   if (loading) {
@@ -176,62 +177,7 @@ export default function GenerateAllScreen() {
           </Text>
 
           {!running && (
-            <>
-              <Text style={styles.label}>Level</Text>
-              <LevelPicker value={level} onChange={setLevel} />
-
-              <Text style={styles.label}>Pages (whole book)</Text>
-              <View style={styles.pagesRow}>
-                <Pressable
-                  style={styles.stepBtn}
-                  onPress={() => adjustPages(-10)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Decrease pages by 10"
-                >
-                  <Text style={styles.stepBtnText}>−10</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.stepBtn}
-                  onPress={() => adjustPages(-1)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Decrease pages by 1"
-                >
-                  <Text style={styles.stepBtnText}>−1</Text>
-                </Pressable>
-                <TextInput
-                  style={[styles.pagesInput, styles.pagesInputFlex]}
-                  value={pagesText}
-                  onChangeText={(t) => setPagesText(t.replace(/[^0-9]/g, ""))}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={colors.textMuted}
-                  maxLength={3}
-                  textAlign="center"
-                  accessibilityLabel="Target pages for the whole book — 0 means no limit"
-                />
-                <Pressable
-                  style={styles.stepBtn}
-                  onPress={() => adjustPages(1)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Increase pages by 1"
-                >
-                  <Text style={styles.stepBtnText}>+1</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.stepBtn}
-                  onPress={() => adjustPages(10)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Increase pages by 10"
-                >
-                  <Text style={styles.stepBtnText}>+10</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.pagesHint}>
-                Total pages across all topics, split evenly. 0 = as much as the
-                model produces. Quizzes and answers don’t count. Use − / + if the
-                keyboard doesn’t open.
-              </Text>
-            </>
+            <GenerationParamsEditor value={params} onChange={handleParamsChange} />
           )}
 
           {errorMsg && (

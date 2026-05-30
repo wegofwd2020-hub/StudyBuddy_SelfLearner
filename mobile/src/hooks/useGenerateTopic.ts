@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { pollUntilDone, submitGenerate } from "@/api/client";
 import { buildTopicPrompt } from "@/hooks/topicPrompt";
-import { randomUUID } from "@/lib/uuid";
+import { buildGenerateRequest } from "@/lib/buildGenerateRequest";
+import type { GenerationParams } from "@/types/generationParams";
 import type { LessonOutput } from "@/types/lesson";
 
 export type TopicGenStatus = "idle" | "generating" | "done" | "failed";
@@ -16,7 +17,10 @@ interface UseGenerateTopicArgs {
 export interface RunTopicArgs {
   title: string;
   subtopics: string[];
-  level: string;
+  // The book's generation template (level / depth / pages).
+  params: GenerationParams;
+  // Persisted per-topic enhancement guidance applied on this (re)generation.
+  instructions?: string;
 }
 
 export interface UseGenerateTopicResult {
@@ -39,7 +43,7 @@ export function useGenerateTopic({
   const [error, setError] = useState<string | null>(null);
 
   const run = useCallback(
-    async ({ title, subtopics, level }: RunTopicArgs): Promise<LessonOutput | null> => {
+    async ({ title, subtopics, params, instructions }: RunTopicArgs): Promise<LessonOutput | null> => {
       setError(null);
       setStatus("generating");
 
@@ -51,15 +55,14 @@ export function useGenerateTopic({
       }
 
       try {
-        const res = await submitGenerate({
-          request_id: randomUUID(),
-          topic: buildTopicPrompt(title, subtopics),
-          level,
-          language: "en",
-          format: "lesson",
-          depth: "standard",
-          api_key: apiKey,
-        });
+        const res = await submitGenerate(
+          buildGenerateRequest({
+            topic: buildTopicPrompt(title, subtopics),
+            apiKey,
+            params,
+            instructions,
+          }),
+        );
         const job = await pollUntilDone(res.job_id, undefined, intervalMs);
 
         if (job.status === "done" && job.result) {

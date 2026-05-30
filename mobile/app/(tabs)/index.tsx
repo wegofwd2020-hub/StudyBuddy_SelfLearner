@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,21 +13,18 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { submitGenerate } from "@/api/client";
 import { loadApiKey } from "@/secure/keyStore";
 import { loadLastLesson } from "@/storage/lessonStore";
-import { LevelPicker } from "@/components/LevelPicker";
-import { DEFAULT_LEVEL } from "@/constants/levels";
+import { loadDefaultParams } from "@/storage/settingsStore";
+import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
+import { buildGenerateRequest } from "@/lib/buildGenerateRequest";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/constants/brand";
 import { colors, radius, spacing, typography } from "@/constants/theme";
-import { randomUUID } from "@/lib/uuid";
+import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
 import type { StoredLesson } from "@/storage/lessonStore";
-
-function randomRequestId(): string {
-  return randomUUID();
-}
 
 export default function HomeScreen() {
   const router = useRouter();
   const [topic, setTopic] = useState("");
-  const [level, setLevel] = useState(DEFAULT_LEVEL);
+  const [params, setParams] = useState<GenerationParams>(DEFAULT_GENERATION_PARAMS);
   const [submitting, setSubmitting] = useState(false);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [lastLesson, setLastLesson] = useState<StoredLesson | null>(null);
@@ -52,6 +49,17 @@ export default function HomeScreen() {
     }, []),
   );
 
+  // Seed the one-off Query params from the saved global default (once).
+  useEffect(() => {
+    let m = true;
+    loadDefaultParams().then((p) => {
+      if (m) setParams(p);
+    });
+    return () => {
+      m = false;
+    };
+  }, []);
+
   const handleGenerate = useCallback(async () => {
     const trimmedTopic = topic.trim();
     if (!trimmedTopic) return;
@@ -66,15 +74,9 @@ export default function HomeScreen() {
 
     setSubmitting(true);
     try {
-      const res = await submitGenerate({
-        request_id: randomRequestId(),
-        topic: trimmedTopic,
-        level,
-        language: "en",
-        format: "lesson",
-        depth: "standard",
-        api_key: apiKey,
-      });
+      const res = await submitGenerate(
+        buildGenerateRequest({ topic: trimmedTopic, apiKey, params }),
+      );
       router.push(`/lesson/${res.job_id}`);
     } catch (err) {
       const message =
@@ -83,7 +85,7 @@ export default function HomeScreen() {
     } finally {
       if (isMounted.current) setSubmitting(false);
     }
-  }, [topic, level, router]);
+  }, [topic, params, router]);
 
   const canGenerate = topic.trim().length > 0 && !submitting;
 
@@ -127,8 +129,12 @@ export default function HomeScreen() {
           accessibilityLabel="Topic input"
         />
 
-        <Text style={styles.label}>Level</Text>
-        <LevelPicker value={level} onChange={setLevel} />
+        <GenerationParamsEditor
+          value={params}
+          onChange={setParams}
+          pagesLabel="Length (pages)"
+          pagesHint="Approximate pages for this lesson. 0 = no limit."
+        />
 
         {errorMsg && (
           <View style={styles.errorBanner}>

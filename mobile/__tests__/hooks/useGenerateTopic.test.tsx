@@ -11,6 +11,15 @@ const { submitGenerate, pollUntilDone } = require("../../src/api/client") as {
 };
 
 import { useGenerateTopic } from "../../src/hooks/useGenerateTopic";
+import type { GenerationParams } from "../../src/types/generationParams";
+
+const PARAMS: GenerationParams = {
+  level: "student",
+  depth: "standard",
+  pages: 0,
+  language: "en",
+  format: "lesson",
+};
 
 const LESSON = {
   topic: "x",
@@ -41,7 +50,7 @@ describe("useGenerateTopic", () => {
       lesson = await result.current.run({
         title: "Kinematics",
         subtopics: ["Speed", "Velocity"],
-        level: "student",
+        params: PARAMS,
       });
     });
 
@@ -53,6 +62,24 @@ describe("useGenerateTopic", () => {
     );
   });
 
+  it("passes enhancement instructions through to the request", async () => {
+    pollUntilDone.mockResolvedValue({ status: "done", result: LESSON });
+
+    const { result } = renderHook(() => useGenerateTopic({ getApiKey, intervalMs: 1 }));
+    await act(async () => {
+      await result.current.run({
+        title: "Kinematics",
+        subtopics: [],
+        params: PARAMS,
+        instructions: "Add a diagram",
+      });
+    });
+
+    expect(submitGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({ instructions: "Add a diagram" }),
+    );
+  });
+
   it("returns null and sets an error when generation fails", async () => {
     pollUntilDone.mockResolvedValue({ status: "failed", error: "boom" });
 
@@ -60,7 +87,7 @@ describe("useGenerateTopic", () => {
 
     let lesson: unknown = "unset";
     await act(async () => {
-      lesson = await result.current.run({ title: "Dynamics", subtopics: [], level: "student" });
+      lesson = await result.current.run({ title: "Dynamics", subtopics: [], params: PARAMS });
     });
 
     expect(lesson).toBeNull();
@@ -75,7 +102,7 @@ describe("useGenerateTopic", () => {
 
     let lesson: unknown = "unset";
     await act(async () => {
-      lesson = await result.current.run({ title: "Dynamics", subtopics: [], level: "student" });
+      lesson = await result.current.run({ title: "Dynamics", subtopics: [], params: PARAMS });
     });
 
     expect(lesson).toBeNull();

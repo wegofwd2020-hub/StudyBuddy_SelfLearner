@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { pollUntilDone, submitGenerate } from "@/api/client";
 import { buildTopicPrompt } from "@/hooks/topicPrompt";
-import { randomUUID } from "@/lib/uuid";
+import { buildGenerateRequest } from "@/lib/buildGenerateRequest";
 import type { StructuredTOC } from "@/types/book";
+import type { GenerationParams } from "@/types/generationParams";
 import type { LessonOutput } from "@/types/lesson";
 
 export type TopicRunStatus = "pending" | "generating" | "done" | "failed";
@@ -18,11 +19,14 @@ interface Target {
   topicId: string;
   title: string;
   subtopics: string[];
+  instructions?: string; // persisted per-topic enhancement guidance
 }
 
 interface UseGenerateAllArgs {
   toc: StructuredTOC;
-  level: string;
+  // The book's generation template (level / depth / pages …). `pages` is the
+  // whole-book target, divided evenly across topics into a per-lesson share.
+  params: GenerationParams;
   // Resolve the BYOK key lazily so it is read at run time, never held in state.
   getApiKey: () => Promise<string | null>;
   // Called once per topic that completes successfully — persist it here.
@@ -30,10 +34,6 @@ interface UseGenerateAllArgs {
   // Topic ids already generated — shown as done and skipped, so a re-run only
   // fills gaps rather than re-billing the user's key for finished topics.
   alreadyDone?: string[];
-  // Target length for the whole book in pages (excludes quizzes/answers).
-  // 0/undefined = no target ("as much as possible"). Split evenly across the
-  // book's topics into a per-lesson page target.
-  totalPages?: number;
   // Injectable poll interval so tests need no real timers.
   intervalMs?: number;
 }
@@ -53,21 +53,16 @@ export interface UseGenerateAllResult {
   cancel: () => void;
 }
 
-function randomRequestId(): string {
-  return randomUUID();
-}
-
 // Client-orchestrated batch over the existing stateless /generate (ADR-003 D3).
 // Sequential by design: keeps BYOK cost legible and avoids rate-limit storms.
 // One topic failing does not abort the batch — it is recorded and the loop
 // continues.
 export function useGenerateAll({
   toc,
-  level,
+  params,
   getApiKey,
   onTopicDone,
   alreadyDone,
-  totalPages,
   intervalMs,
 }: UseGenerateAllArgs): UseGenerateAllResult {
   const doneSet = useMemo(() => new Set(alreadyDone ?? []), [alreadyDone]);
@@ -76,7 +71,13 @@ export function useGenerateAll({
     const out: Target[] = [];
     for (const s of toc.subjects) {
       for (const u of s.units) {
-        if (u.id) out.push({ topicId: u.id, title: u.title, subtopics: u.subtopics });
+        if (u.id)
+          out.push({
+            topicId: u.id,
+            title: u.title,
+            subtopics: u.subtopics,
+            instructions: u.enhancementInstructions,
+          });
       }
     }
     return out;
@@ -132,8 +133,8 @@ export function useGenerateAll({
       // Divide the whole-book page target evenly across topics. An approximate
       // per-lesson share is fine — the backend treats it as a soft target.
       const perTopicPages =
-        totalPages && totalPages > 0 && targets.length > 0
-          ? Math.max(1, Math.round(totalPages / targets.length))
+        params.pages > 0 && targets.length > 0
+          ? Math.max(1, Math.round(params.pages / targets.length))
           : 0;
 
       for (const t of targets) {
@@ -142,16 +143,15 @@ export function useGenerateAll({
         if (!force && doneSet.has(t.topicId)) continue;
         setStatus(t.topicId, "generating");
         try {
-          const res = await submitGenerate({
-            request_id: randomRequestId(),
-            topic: buildTopicPrompt(t.title, t.subtopics),
-            level,
-            language: "en",
-            format: "lesson",
-            depth: "standard",
-            target_pages: perTopicPages,
-            api_key: apiKey,
-          });
+          const res = await submitGenerate(
+            buildGenerateRequest({
+              topic: buildTopicPrompt(t.title, t.subtopics),
+              apiKey,
+              params,
+              targetPages: perTopicPages,
+              instructions: t.instructions,
+            }),
+          );
           const job = await pollUntilDone(res.job_id, undefined, intervalMs);
           if (cancelledRef.current) break;
 
@@ -174,7 +174,7 @@ export function useGenerateAll({
       setRunning(false);
       if (!cancelledRef.current) setFinished(true);
     })();
-  }, [running, targets, doneSet, level, totalPages, getApiKey, onTopicDone, intervalMs, setStatus, buildInitialProgress]);
+  }, [running, targets, doneSet, params, getApiKey, onTopicDone, intervalMs, setStatus, buildInitialProgress]);
 
   const cancel = useCallback(() => {
     cancelledRef.current = true;

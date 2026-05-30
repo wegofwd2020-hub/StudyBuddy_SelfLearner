@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Book, BookMeta, GeneratedTopic, StructuredTOC } from "@/types/book";
 import { randomUUID } from "@/lib/uuid";
+import { DEFAULT_GENERATION_PARAMS } from "@/types/generationParams";
 
 // Local-first book storage (ADR-003 D1) — same AsyncStorage shape as the lesson
 // library: a single index + one entry per book. Migrate to expo-sqlite if books
@@ -84,9 +85,14 @@ export async function loadBook(id: string): Promise<Book | null> {
   if (!raw) return null;
   try {
     const book = JSON.parse(raw) as Book;
-    // Backfill topic ids for books saved before generate-all existed. Persisted
-    // on the next save; in-memory here so callers always see stable ids.
-    return { ...book, toc: ensureTopicIds(book.toc) };
+    // Backfill topic ids for books saved before generate-all existed, and a
+    // default generation template for books saved before templates existed.
+    // Persisted on the next save; in-memory here so callers always see them.
+    return {
+      ...book,
+      toc: ensureTopicIds(book.toc),
+      generationParams: book.generationParams ?? { ...DEFAULT_GENERATION_PARAMS },
+    };
   } catch {
     return null;
   }

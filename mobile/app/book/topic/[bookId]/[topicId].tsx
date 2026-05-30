@@ -4,30 +4,52 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { loadBook, saveBook, setTopicContent } from "@/storage/bookStore";
 import { loadApiKey } from "@/secure/keyStore";
 import { TopicRenderer } from "@/components/LessonRenderer";
-import { LevelPicker } from "@/components/LevelPicker";
 import { useGenerateTopic } from "@/hooks/useGenerateTopic";
-import { DEFAULT_LEVEL } from "@/constants/levels";
+import { DEFAULT_GENERATION_PARAMS } from "@/types/generationParams";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import type { Book, GeneratedTopic } from "@/types/book";
 
 // Locate the topic's node in the (possibly edited) TOC so regeneration uses the
-// current title + subtopics, not the snapshot from the last generation.
+// current title + subtopics + saved instructions, not a stale snapshot.
 function findNode(
   book: Book,
   topicId: string,
-): { title: string; subtopics: string[] } | null {
+): { title: string; subtopics: string[]; enhancementInstructions?: string } | null {
   for (const s of book.toc.subjects) {
     for (const u of s.units) {
-      if (u.id === topicId) return { title: u.title, subtopics: u.subtopics };
+      if (u.id === topicId)
+        return {
+          title: u.title,
+          subtopics: u.subtopics,
+          enhancementInstructions: u.enhancementInstructions,
+        };
     }
   }
   return null;
+}
+
+// Persist per-topic enhancement instructions onto the TOC node (immutably) so
+// they stick and re-apply on every future regeneration.
+function setNodeInstructions(book: Book, topicId: string, instructions: string): Book {
+  return {
+    ...book,
+    toc: {
+      subjects: book.toc.subjects.map((s) => ({
+        ...s,
+        units: s.units.map((u) =>
+          u.id === topicId ? { ...u, enhancementInstructions: instructions || undefined } : u,
+        ),
+      })),
+    },
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 // Renders one book topic's full generated content — lesson plus any tutorial,
@@ -40,7 +62,7 @@ export default function BookTopicScreen() {
   const [loading, setLoading] = useState(true);
 
   const [panelOpen, setPanelOpen] = useState(false);
-  const [level, setLevel] = useState(DEFAULT_LEVEL);
+  const [instructions, setInstructions] = useState("");
 
   const getApiKey = useCallback(() => loadApiKey(), []);
   const { status, error, run } = useGenerateTopic({ getApiKey });
@@ -53,6 +75,7 @@ export default function BookTopicScreen() {
       if (mounted) {
         setBook(loaded);
         setTopic(loaded?.content?.[topicId] ?? null);
+        setInstructions((loaded ? findNode(loaded, topicId)?.enhancementInstructions : "") ?? "");
         setLoading(false);
       }
     })();
@@ -67,11 +90,19 @@ export default function BookTopicScreen() {
     if (!book) return;
     const title = node?.title ?? topic?.title ?? "Untitled topic";
     const subtopics = node?.subtopics ?? [];
+    const params = book.generationParams ?? DEFAULT_GENERATION_PARAMS;
+    const trimmed = instructions.trim();
 
-    const lesson = await run({ title, subtopics, level });
+    // Persist the instruction onto the topic first so it sticks and re-applies
+    // on future regenerations, even before this run completes.
+    const withInstr = setNodeInstructions(book, topicId, trimmed);
+    setBook(withInstr);
+    await saveBook(withInstr);
+
+    const lesson = await run({ title, subtopics, params, instructions: trimmed || undefined });
     if (!lesson) return; // failure surfaces via `error`
 
-    const next = setTopicContent(book, {
+    const next = setTopicContent(withInstr, {
       topicId,
       title,
       lesson,
@@ -81,7 +112,7 @@ export default function BookTopicScreen() {
     setTopic(next.content?.[topicId] ?? null);
     setPanelOpen(false);
     await saveBook(next);
-  }, [book, node, topic, topicId, level, run]);
+  }, [book, node, topic, topicId, instructions, run]);
 
   if (loading) {
     return (
@@ -134,8 +165,21 @@ export default function BookTopicScreen() {
 
       {panelOpen && !regenerating && (
         <View style={styles.panel}>
-          <Text style={styles.panelLabel}>Level</Text>
-          <LevelPicker value={level} onChange={setLevel} />
+          <Text style={styles.panelLabel}>Enhancement instructions</Text>
+          <TextInput
+            style={styles.instrInput}
+            value={instructions}
+            onChangeText={setInstructions}
+            placeholder="e.g. Add a diagram for the T-shape; add a worked example."
+            placeholderTextColor={colors.textMuted}
+            multiline
+            textAlignVertical="top"
+            accessibilityLabel="Enhancement instructions for this topic"
+          />
+          <Text style={styles.panelHint}>
+            Saved on this topic and re-applied each time it’s regenerated. Uses
+            the book’s level / depth / pages.
+          </Text>
           {error && <Text style={styles.panelError}>{error}</Text>}
           <Pressable
             style={styles.confirmBtn}
@@ -218,6 +262,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   panelError: { color: colors.error, fontSize: typography.sizeSm },
+  instrInput: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    color: colors.text,
+    fontSize: typography.sizeMd,
+    minHeight: 70,
+  },
+  panelHint: { color: colors.textMuted, fontSize: typography.sizeXs },
   confirmBtn: {
     backgroundColor: colors.warning,
     borderRadius: radius.md,

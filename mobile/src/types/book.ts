@@ -2,6 +2,7 @@
 // (pipeline/toc_structurer.py) and the POST /structure request/response.
 
 import type { LessonOutput } from "@/types/lesson";
+import type { GenerationParams } from "@/types/generationParams";
 
 export interface TopicNode {
   // Client-assigned stable id (kept across edits/reorders so generated content
@@ -12,6 +13,9 @@ export interface TopicNode {
   title: string;
   subtopics: string[];
   prerequisites: string[];
+  // Free-text author guidance re-applied on every (re)generation of this topic
+  // (e.g. "add a diagram for the T-shape"). Persisted so refinements stick.
+  enhancementInstructions?: string;
 }
 
 export interface SubjectNode {
@@ -132,6 +136,10 @@ export interface Book {
   // Per-topic generated content, keyed by TopicNode.id. Absent until the user
   // runs "generate all". Orphaned entries (topic removed) are pruned on save.
   content?: Record<string, GeneratedTopic>;
+  // The book's generation template (level / depth / pages …) — the single
+  // source of truth for generating any topic in this book. Seeded from the
+  // global default (settingsStore) at creation; defaulted on load if missing.
+  generationParams?: GenerationParams;
 }
 
 // Lightweight index entry for the books list (no full TOC).
