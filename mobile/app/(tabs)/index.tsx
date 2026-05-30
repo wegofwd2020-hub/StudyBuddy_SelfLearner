@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,6 @@ import { loadLastLesson } from "@/storage/lessonStore";
 import { loadDefaultParams } from "@/storage/settingsStore";
 import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
 import { buildGenerateRequest } from "@/lib/buildGenerateRequest";
-import { BRAND_NAME, BRAND_TAGLINE } from "@/constants/brand";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
 import type { StoredLesson } from "@/storage/lessonStore";
@@ -97,8 +97,14 @@ export default function HomeScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.hero} accessibilityRole="header">
-          <Text style={styles.wordmark}>{BRAND_NAME}</Text>
-          <Text style={styles.tagline}>{BRAND_TAGLINE}</Text>
+          <View style={styles.logoCard}>
+            <Image
+              source={require("../../assets/brand/mentible-growing-mind.png")}
+              style={styles.logo}
+              resizeMode="contain"
+              accessibilityLabel="Mentible — AI-Driven Self-Learner"
+            />
+          </View>
         </View>
 
         {hasKey === false && (
@@ -197,20 +203,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
-    gap: spacing.xs,
   },
-  wordmark: {
-    fontSize: typography.sizeXxl,
-    fontWeight: "800",
-    color: colors.text,
-    letterSpacing: 0.5,
+  // The logo is dark-on-transparent (made for light backgrounds), so sit it on
+  // a light rounded card to stay legible on the dark UI. alignSelf:center keeps
+  // the card shrink-wrapped to the logo rather than stretching full-width.
+  logoCard: {
+    alignSelf: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
-  tagline: {
-    fontSize: typography.sizeSm,
-    fontWeight: "600",
-    color: colors.primary,
-    textTransform: "uppercase",
-    letterSpacing: 2,
+  logo: {
+    width: 200,
+    height: 200,
   },
   keyBanner: {
     backgroundColor: colors.warning + "22",
