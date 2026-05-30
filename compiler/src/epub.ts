@@ -45,6 +45,50 @@ interface NavSubject {
   items: { href: string; title: string }[];
 }
 
+interface ImageRes {
+  id: string;
+  href: string; // relative to OEBPS/, e.g. images/img-001.jpg
+  mediaType: string;
+  bytes: Uint8Array;
+}
+
+const MEDIA_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+};
+
+// Pull data-URI images out of chapter XHTML into packaged resources: EPUB3
+// requires referenced media to be manifest items, and many readers won't render
+// inline data: URIs. Rewrites each `src="data:image/…;base64,…"` to a packaged
+// path (../images/img-NNN.ext) and records the bytes. Identical images are
+// shared. `images` and `seen` accumulate across chapters.
+function packImages(xhtml: string, images: ImageRes[], seen: Map<string, string>): string {
+  return xhtml.replace(
+    /(src=")data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)(")/gi,
+    (_full, pre: string, mediaType: string, b64: string, post: string) => {
+      let href = seen.get(b64);
+      if (!href) {
+        const ext = MEDIA_EXT[mediaType.toLowerCase()] ?? "img";
+        const idx = String(images.length + 1).padStart(3, "0");
+        href = `images/img-${idx}.${ext}`;
+        images.push({
+          id: `img${idx}`,
+          href,
+          mediaType: mediaType.toLowerCase(),
+          bytes: new Uint8Array(Buffer.from(b64, "base64")),
+        });
+        seen.set(b64, href);
+      }
+      // Chapters live in OEBPS/chapters/, images in OEBPS/images/.
+      return `${pre}../${href}${post}`;
+    },
+  );
+}
+
 const CONTAINER_XML = `<?xml version="1.0" encoding="utf-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
 <rootfiles>
@@ -73,6 +117,8 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
   // collect the nav structure (subjects with ≥1 chapter).
   const chapters: Chapter[] = [];
   const navSubjects: NavSubject[] = [];
+  const images: ImageRes[] = [];
+  const seenImages = new Map<string, string>();
   let n = 0;
   for (const subject of book.toc.subjects) {
     const items: NavSubject["items"] = [];
@@ -83,7 +129,11 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
       const idx = String(n).padStart(3, "0");
       const href = `chapters/ch-${idx}.xhtml`;
       const title = topic.title || unit.title || `Topic ${n}`;
-      const xhtml = xhtmlDocument(title, renderTopicBody(topic, diagrams), "../css/style.css");
+      const xhtml = packImages(
+        xhtmlDocument(title, renderTopicBody(topic, diagrams), "../css/style.css"),
+        images,
+        seenImages,
+      );
       chapters.push({
         id: `ch${idx}`,
         href,
@@ -109,7 +159,7 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
   // mimetype MUST be the first entry and stored uncompressed (EPUB OCF rule).
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
   zip.file("META-INF/container.xml", CONTAINER_XML);
-  zip.file("OEBPS/content.opf", buildOpf(book, chapters));
+  zip.file("OEBPS/content.opf", buildOpf(book, chapters, images));
   zip.file("OEBPS/nav.xhtml", buildNav(navSubjects));
   // EPUB2 NCX navigation alongside the EPUB3 nav — older/"traditional" readers
   // require it and render blank pages without it.
@@ -117,6 +167,7 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
   zip.file("OEBPS/css/style.css", STYLESHEET);
   zip.file("OEBPS/title.xhtml", titleXhtml);
   for (const ch of chapters) zip.file(`OEBPS/${ch.href}`, ch.xhtml);
+  for (const img of images) zip.file(`OEBPS/${img.href}`, img.bytes);
 
   return zip.generateAsync({ type: "uint8array", mimeType: "application/epub+zip" });
 }
@@ -163,12 +214,15 @@ function buildNav(subjects: NavSubject[]): string {
   return xhtmlDocument("Contents", body, "css/style.css");
 }
 
-function buildOpf(book: Book, chapters: Chapter[]): string {
+function buildOpf(book: Book, chapters: Chapter[], images: ImageRes[] = []): string {
   const manifest = [
     '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
     '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>',
     '<item id="css" href="css/style.css" media-type="text/css"/>',
     '<item id="titlepage" href="title.xhtml" media-type="application/xhtml+xml"/>',
+    ...images.map(
+      (img) => `<item id="${img.id}" href="${escapeHtml(img.href)}" media-type="${img.mediaType}"/>`,
+    ),
     ...chapters.map((ch) => {
       const props = [ch.hasMath ? "mathml" : "", ch.hasSvg ? "svg" : ""].filter(Boolean).join(" ");
       const attr = props ? ` properties="${props}"` : "";

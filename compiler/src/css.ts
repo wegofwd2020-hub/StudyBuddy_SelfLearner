@@ -92,4 +92,5 @@ export const STYLESHEET = `
   .diagram figcaption { font-family: ${SANS}; font-size: 0.85em; color: #666; margin-top: 0.3em; }
   .diagram figcaption::before { content: "Figure " counter(figure) ". "; font-weight: 600; }
   math { font-size: 1.05em; }
+  img { max-width: 100%; height: auto; display: block; margin: 0.9em auto; }
 `;
