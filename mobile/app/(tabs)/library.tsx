@@ -3,6 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteEpub, listEpubs, type EpubMeta } from "@/storage/epubLibrary";
+import { BookCover } from "@/components/BookCover";
 import { useResponsive } from "@/hooks/useResponsive";
 import { MAX_WIDE_WIDTH } from "@/constants/layout";
 import { colors, radius, spacing, typography } from "@/constants/theme";
@@ -17,13 +18,14 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// The Library: finished books compiled to EPUB3 and stored on this device.
-// Tapping a book downloads it (web) or opens the share sheet (native).
+// The Library: finished books compiled to EPUB3 and stored on this device,
+// shown as a cover shelf (Calibre-style). Tapping a cover opens the reader;
+// on web it downloads, on native it opens the share sheet.
 export default function LibraryScreen() {
   const router = useRouter();
   const [items, setItems] = useState<EpubMeta[]>([]);
-  const { isTablet, isDesktop } = useResponsive();
-  const numColumns = isDesktop ? 2 : 1;
+  const { isDesktop } = useResponsive();
+  const numColumns = isDesktop ? 4 : 2;
 
   useFocusEffect(
     useCallback(() => {
@@ -63,39 +65,35 @@ export default function LibraryScreen() {
     <FlatList
       key={numColumns}
       style={styles.list}
-      contentContainerStyle={[styles.listContent, isTablet && styles.listContentWide]}
+      contentContainerStyle={[styles.gridContent, isDesktop && styles.gridWide]}
       data={items}
       keyExtractor={(item) => item.id}
       numColumns={numColumns}
-      columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      columnWrapperStyle={styles.gridRow}
       renderItem={({ item }) => (
-        <Pressable
-          style={[styles.card, numColumns > 1 && styles.cardGrid]}
-          onPress={() => router.push(`/book/read/${item.id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={`Open book: ${item.title}`}
-        >
-          <Ionicons name="book" size={22} color={colors.primary} />
-          <View style={styles.cardMain}>
-            <Text style={styles.title} numberOfLines={2}>
-              {item.title}
-            </Text>
-            <Text style={styles.meta}>
-              EPUB3 · {formatSize(item.sizeBytes)} · {formatDate(item.compiledAt)}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        <View style={[styles.tile, { maxWidth: `${100 / numColumns}%` }]}>
           <Pressable
-            style={styles.deleteBtn}
-            onPress={() => handleDelete(item.id)}
+            onPress={() => router.push(`/book/read/${item.id}`)}
             accessibilityRole="button"
-            accessibilityLabel={`Delete from library: ${item.title}`}
-            hitSlop={8}
+            accessibilityLabel={`Open book: ${item.title}`}
           >
-            <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+            <BookCover title={item.title} badge="EPUB3" />
           </Pressable>
-        </Pressable>
+          <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
+          <View style={styles.tileFooter}>
+            <Text style={styles.tileMeta} numberOfLines={1}>
+              {formatSize(item.sizeBytes)} · {formatDate(item.compiledAt)}
+            </Text>
+            <Pressable
+              onPress={() => handleDelete(item.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete from library: ${item.title}`}
+              hitSlop={8}
+            >
+              <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+            </Pressable>
+          </View>
+        </View>
       )}
     />
   );
@@ -103,25 +101,13 @@ export default function LibraryScreen() {
 
 const styles = StyleSheet.create({
   list: { flex: 1, backgroundColor: colors.background },
-  listContent: { padding: spacing.md },
-  listContentWide: { maxWidth: MAX_WIDE_WIDTH, width: "100%", alignSelf: "center" },
-  columnWrapper: { gap: spacing.sm },
-  cardGrid: { flex: 1 },
-  separator: { height: spacing.sm },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  cardMain: { flex: 1, gap: 2 },
-  title: { fontSize: typography.sizeMd, fontWeight: "700", color: colors.text },
-  meta: { fontSize: typography.sizeXs, color: colors.textMuted },
-  deleteBtn: { padding: spacing.xs },
+  gridContent: { padding: spacing.md },
+  gridWide: { maxWidth: MAX_WIDE_WIDTH, width: "100%", alignSelf: "center" },
+  gridRow: { gap: spacing.md },
+  tile: { flex: 1, marginBottom: spacing.lg, gap: spacing.xs },
+  tileTitle: { fontSize: typography.sizeSm, fontWeight: "700", color: colors.text },
+  tileFooter: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  tileMeta: { flex: 1, fontSize: typography.sizeXs, color: colors.textMuted },
   empty: {
     flex: 1,
     backgroundColor: colors.background,
