@@ -139,6 +139,13 @@ function htmlDocument(dataJson: string, bodyJs: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Gelasio = a Georgia-metric serif, so the reader's body text matches the
+     EPUB/PDF (Georgia) and renders a true serif even on devices/emulators that
+     ship no serif font. Falls back to the generic serif offline. -->
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,400;0,500;0,600;1,400&display=swap">
 <link rel="stylesheet"
   href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
   crossorigin="anonymous">
@@ -155,7 +162,7 @@ function htmlDocument(dataJson: string, bodyJs: string): string {
     --warning: ${colors.warning};
     /* Match the EPUB/PDF artifact: serif body for prose, sans for headings/UI. */
     --sans: -apple-system, "Helvetica Neue", "Segoe UI", Roboto, "Liberation Sans", Arial, sans-serif;
-    --serif: Georgia, "Times New Roman", "Liberation Serif", serif;
+    --serif: 'Gelasio', "Noto Serif", Georgia, "Times New Roman", "Liberation Serif", serif;
     color-scheme: dark;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -164,8 +171,10 @@ function htmlDocument(dataJson: string, bodyJs: string): string {
     background: var(--bg);
     color: var(--text);
     font-family: var(--serif);
+    font-weight: 400;
     font-size: 18px;
     line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
     padding: 20px 18px 40px;
     /* Cap the line length for a comfortable reading measure (esp. on tablets). */
     max-width: 42rem;
