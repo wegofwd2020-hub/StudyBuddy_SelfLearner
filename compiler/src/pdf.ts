@@ -5,6 +5,7 @@ import { escapeHtml } from "./html";
 import { PassthroughDiagramRenderer, type DiagramRenderer } from "./diagrams";
 import { EmptyBookError } from "./epub";
 import { SOURCE_SERIF_FONTFACE } from "./fonts";
+import { buildCoverSvg, coverInputForBook } from "./cover";
 
 // Build the single-document HTML for the print/PDF target — a *textbook
 // compilation* (ADR-004 D5), distinct from the EPUB's per-topic layout:
@@ -124,7 +125,7 @@ export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
     answersHtml = `<section class="answers" id="answers"><h1>Answers</h1>${byChapter(renderAnswers)}</section>`;
   }
 
-  const titlePage = `<section class="titlepage"><h1>${escapeHtml(book.title)}</h1></section>`;
+  const coverPage = `<section class="cover-page">${buildCoverSvg(coverInputForBook(book))}</section>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -134,7 +135,7 @@ export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
 <style>${PDF_CSS}</style>
 </head>
 <body>
-${titlePage}
+${coverPage}
 ${toc}
 ${chaptersHtml}
 ${quizzesHtml}
@@ -184,8 +185,11 @@ const PDF_CSS = `
   }
   .diagram figcaption::before { content: "Figure " counter(figure) ". "; font-weight: 700; }
 
-  .titlepage { break-after: page; text-align: center; padding-top: 35vh; }
-  .titlepage h1 { font-size: 2.4em; }
+  /* Cover: its own page (no @page margin). The SVG (5:8) fills the full A4
+     height edge-to-edge; its narrower width centres with slim side margins. */
+  @page cover { margin: 0; }
+  .cover-page { page: cover; break-after: page; text-align: center; background: #1e1b4b; }
+  .cover-page svg { display: inline-block; height: 297mm; width: 185.6mm; }
 
   nav.toc { break-after: page; }
   nav.toc ol { list-style: none; padding: 0; }

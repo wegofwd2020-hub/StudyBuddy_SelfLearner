@@ -9,6 +9,7 @@ import { prerenderDiagrams, type MermaidRenderer } from "./mermaid";
 import { xhtmlDocument } from "./xhtml";
 import { STYLESHEET } from "./css";
 import { escapeHtml } from "./html";
+import { buildCoverSvgFile, buildCoverXhtml, coverInputForBook } from "./cover";
 import type { Book } from "./types";
 
 // Compile a canonical Book (book.json) into a self-contained EPUB3 (milestone 2).
@@ -149,6 +150,10 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
 
   if (chapters.length === 0) throw new EmptyBookError();
 
+  const coverInput = coverInputForBook(book);
+  const coverXhtml = buildCoverXhtml(coverInput);
+  const coverSvg = buildCoverSvgFile(coverInput);
+
   const titleXhtml = xhtmlDocument(
     book.title,
     `<section epub:type="titlepage"><h1>${escapeHtml(book.title)}</h1></section>`,
@@ -165,6 +170,8 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
   // require it and render blank pages without it.
   zip.file("OEBPS/toc.ncx", buildNcx(book, chapters));
   zip.file("OEBPS/css/style.css", STYLESHEET);
+  zip.file("OEBPS/cover.xhtml", coverXhtml);
+  zip.file("OEBPS/cover.svg", coverSvg);
   zip.file("OEBPS/title.xhtml", titleXhtml);
   for (const ch of chapters) zip.file(`OEBPS/${ch.href}`, ch.xhtml);
   for (const img of images) zip.file(`OEBPS/${img.href}`, img.bytes);
@@ -219,6 +226,10 @@ function buildOpf(book: Book, chapters: Chapter[], images: ImageRes[] = []): str
     '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
     '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>',
     '<item id="css" href="css/style.css" media-type="text/css"/>',
+    // Cover: the SVG is the EPUB3 cover-image; cover.xhtml is the rendered page
+    // (inline SVG → needs the svg property).
+    '<item id="cover-image" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/>',
+    '<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml" properties="svg"/>',
     '<item id="titlepage" href="title.xhtml" media-type="application/xhtml+xml"/>',
     ...images.map(
       (img) => `<item id="${img.id}" href="${escapeHtml(img.href)}" media-type="${img.mediaType}"/>`,
@@ -230,6 +241,7 @@ function buildOpf(book: Book, chapters: Chapter[], images: ImageRes[] = []): str
     }),
   ];
   const spine = [
+    '<itemref idref="cover"/>',
     '<itemref idref="titlepage"/>',
     ...chapters.map((ch) => `<itemref idref="${ch.id}"/>`),
   ];
@@ -239,6 +251,7 @@ function buildOpf(book: Book, chapters: Chapter[], images: ImageRes[] = []): str
 <dc:identifier id="bookid">${escapeHtml(book.id)}</dc:identifier>
 <dc:title>${escapeHtml(book.title)}</dc:title>
 <dc:language>en</dc:language>
+<meta name="cover" content="cover-image"/>
 <meta property="dcterms:modified">${modifiedTimestamp(book.updatedAt)}</meta>
 </metadata>
 <manifest>
