@@ -41,7 +41,10 @@ export function BookCover({
       accessibilityLabel={`Cover: ${title}`}
     >
       <View style={[styles.spine, { backgroundColor: darken(bg) }]} />
-      <Text style={[styles.title, large && styles.titleLarge]} numberOfLines={large ? 7 : 4}>
+      <Text
+        style={[styles.title, large && styles.titleLarge, badge && styles.titleWithBadge]}
+        numberOfLines={large ? 7 : 4}
+      >
         {title}
       </Text>
       <Ionicons
@@ -81,6 +84,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   titleLarge: { fontSize: typography.sizeMd, lineHeight: 22 },
+  // Drop the title below the top-right badge so a long first line doesn't run
+  // under it (badge sits at top:8 and is ~16px tall).
+  titleWithBadge: { marginTop: 14 },
   glyph: { position: "absolute", right: 10, bottom: 10 },
   badge: {
     position: "absolute",
