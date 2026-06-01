@@ -52,7 +52,12 @@ _TOKENS_PER_PAGE = 800
 # Claude is stochastic and occasionally returns non-JSON or schema-invalid
 # output; CLAUDE.md mandates retrying before failing the job. Each attempt is a
 # fresh call with the same prompt (a re-roll usually parses cleanly).
-_MAX_GENERATION_ATTEMPTS = 3
+# Raised 3 → 6: chapters whose enhancementInstructions embed a verbatim Mermaid
+# block (many quotes/backticks the model must JSON-escape) push up the per-call
+# invalid-JSON rate, so a few chapters were exhausting a 3-attempt budget. Extra
+# re-rolls only cost tokens on the chapters that actually need them (success
+# breaks the loop early).
+_MAX_GENERATION_ATTEMPTS = 6
 
 
 def _max_tokens_for_pages(target_pages: int) -> int:
