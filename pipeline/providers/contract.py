@@ -16,6 +16,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
+# Version of the LLMRequest/LLMResponse/Provider/Capabilities contract defined in
+# THIS module. Bump when the seam's shape changes in a way that stored data or
+# callers must notice (e.g. a new required field, changed semantics). Stamped
+# into provenance (see registry.provenance) so a generation records which seam
+# produced it. Distinct from a provider's *integration_version* and the vendor's
+# *model id* — see docs/multi-provider-directions.md §6.
+LLM_CONTRACT_VERSION = 1
+
 
 @dataclass(frozen=True)
 class Capabilities:

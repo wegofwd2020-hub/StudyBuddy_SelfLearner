@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pipeline.providers.contract import Capabilities, Provider
+from pipeline.providers.contract import LLM_CONTRACT_VERSION, Capabilities, Provider
 from pipeline.providers.errors import LLMConfigurationError
 
 
@@ -27,6 +27,10 @@ class ProviderSpec:
     base_url: str | None = None  # None for providers with their own SDK (Anthropic)
     managed_env_key: str = ""  # env var for the MANAGED key (unused on the BYOK path)
     model_verified: bool = False
+    # Version of OUR integration for this provider (request shaping, JSON mode,
+    # prompt shims). Bump when we change HOW we call the vendor — independent of
+    # the model id and the contract version. Recorded in provenance().
+    integration_version: int = 1
 
 
 PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
@@ -34,7 +38,8 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         provider_id="anthropic",
         openai_compatible=False,
         default_model="claude-sonnet-4-6",
-        capabilities=Capabilities(tools=True, max_context=200_000),
+        # JSON delivered via tool-use (see anthropic_native.py).
+        capabilities=Capabilities(json_object=True, json_schema=True, tools=True, max_context=200_000),
         managed_env_key="ANTHROPIC_API_KEY",
         model_verified=True,
     ),
@@ -84,6 +89,34 @@ def available_providers() -> list[str]:
     return list(PROVIDER_REGISTRY)
 
 
+def validate_selection(provider_id: str, model: str | None = None) -> tuple[str, str]:
+    """Resolve + validate a user/caller LLM choice (the seam the future request
+    param + mobile selector call). Returns (provider_id, model). The provider
+    must be known; the model string is accepted as-is (we don't hold a vendor
+    catalogue) and defaults to the spec default. Raises LLMConfigurationError
+    for an unknown provider."""
+    spec = PROVIDER_REGISTRY.get(provider_id)
+    if spec is None:
+        raise LLMConfigurationError(f"unknown provider {provider_id!r}")
+    return provider_id, (model or spec.default_model)
+
+
+def provenance(provider_id: str, model: str | None = None) -> dict:
+    """A stampable record of WHICH LLM + versions produced a generation — meant
+    to be stored on each generated unit and on a book's pinned params, so we can
+    enforce per-book model pinning and detect content made with an outdated
+    integration/model (and offer to regenerate). See multi-provider-directions §6."""
+    pid, chosen_model = validate_selection(provider_id, model)
+    spec = PROVIDER_REGISTRY[pid]
+    return {
+        "provider": pid,
+        "model": chosen_model,
+        "model_verified": spec.model_verified,
+        "integration_version": spec.integration_version,
+        "contract_version": LLM_CONTRACT_VERSION,
+    }
+
+
 def resolve_role(role: str) -> tuple[str, str]:
     """(provider_id, model) for a logical role."""
     try:
@@ -122,8 +155,10 @@ def build_provider(
         return OpenAICompatibleProvider(**kwargs)
 
     if spec.provider_id == "anthropic":
-        from pipeline.providers.anthropic_adapter import AnthropicAdapter
+        # Native provider: uses tool-use for reliable JSON. The legacy-wrapping
+        # AnthropicAdapter remains available for the eventual backend rewire.
+        from pipeline.providers.anthropic_native import AnthropicNativeProvider
 
-        return AnthropicAdapter(api_key=api_key, model=chosen_model)
+        return AnthropicNativeProvider(api_key=api_key, model=chosen_model)
 
     raise LLMConfigurationError(f"no constructor wired for provider {provider_id!r}")

@@ -7,7 +7,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from pipeline.providers.anthropic_adapter import AnthropicAdapter
+from pipeline.providers.anthropic_native import AnthropicNativeProvider
 from pipeline.providers.contract import LLMRequest
 from pipeline.providers.errors import LLMConfigurationError
 from pipeline.providers.openai_compatible import OpenAICompatibleProvider
@@ -48,9 +48,9 @@ def test_build_openai_compatible_with_injected_client():
     assert p.generate(LLMRequest(prompt="q")).text == "ok"
 
 
-def test_build_anthropic_returns_adapter():
+def test_build_anthropic_returns_native_provider():
     p = build_provider("anthropic", api_key="sk-ant-fake")
-    assert isinstance(p, AnthropicAdapter)
+    assert isinstance(p, AnthropicNativeProvider)
     assert p.provider_id == "anthropic"
     assert p.model == "claude-sonnet-4-6"
 
