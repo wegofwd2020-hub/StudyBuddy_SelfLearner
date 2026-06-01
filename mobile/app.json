@@ -5,6 +5,10 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "web": {
+      "name": "Mentible",
+      "shortName": "Mentible"
+    },
     "android": {
       "package": "com.wegofwd2020.studybuddyq",
       "versionCode": 1,
