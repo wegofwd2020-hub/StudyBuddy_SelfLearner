@@ -24,6 +24,19 @@ text-free, transparent, higher-res redraw before any real use).
 | `mentible-mark-m-gemini.png` | 3-D "M" mark | — |
 | `mentible-pathway-gemini.png` | Pathway | *Self-Learner Journey* |
 
+### Text-free mark extracted from the Gemini growing-mind concept
+
+Transparent, **text-free** crops of just the tree-in-book "M" glyph, pulled from
+`mentible-growing-mind-gemini.png` (background keyed out; wordmark/tagline/header
+removed). **Upscaled from a 469×384 raster — soft at large sizes.** Good for an
+in-app hero or icon review; for a crisp store/launcher icon, redraw as vector
+(cf. the SVG-sourced `mentible-growing-mind.svg`, a different rendition).
+
+| File | Size | Use |
+|---|---|---|
+| `mentible-mark-growing-mind.png` | 224×214 | tight transparent mark |
+| `mentible-icon-1024.png` | 1024×1024 | square, centered, ~12% safe margin — drop-in for `assets/icon.png` etc. (see below) |
+
 > Brand note: "Mentible" is **provisional pending trademark clearance** (see the
 > rebrand/ADR memory). Don't ship to a store under this name until cleared.
 
