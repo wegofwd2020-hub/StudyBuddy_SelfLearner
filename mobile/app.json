@@ -5,14 +5,25 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e1b4b"
+    },
     "web": {
       "name": "Mentible",
-      "shortName": "Mentible"
+      "shortName": "Mentible",
+      "favicon": "./assets/favicon.png"
     },
     "android": {
       "package": "com.wegofwd2020.studybuddyq",
       "versionCode": 1,
-      "permissions": ["android.permission.INTERNET"]
+      "permissions": ["android.permission.INTERNET"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e1b4b"
+      }
     },
     "plugins": [
       "expo-router",
