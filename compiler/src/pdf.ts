@@ -159,14 +159,14 @@ const PDF_CSS = `
     @bottom-center { content: counter(page); font-size: 9pt; color: #777; }
   }
   html {
-    font-family: "Source Serif 4", Georgia, "Times New Roman", "Liberation Serif", serif;
+    font-family: "Liberation Serif", Georgia, "Times New Roman", serif;
     font-size: 10.5pt;
     line-height: 1.36;
     color: #111;
     counter-reset: figure table;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
+    font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
   }
   h1 { font-size: 1.55em; margin: 0 0 0.35em; }
   h2 { font-size: 1.22em; margin: 0.75em 0 0.25em; }
@@ -176,16 +176,18 @@ const PDF_CSS = `
   code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f3f3f3; padding: 0 0.2em; }
   pre { background: #f6f6f6; border: 1px solid #ddd; padding: 0.6em; white-space: pre-wrap; }
   table { width: 100%; border-collapse: collapse; font-size: 0.95em; counter-increment: table; }
-  th, td { border: 1px solid #ccc; padding: 0.35em 0.6em; text-align: left; }
+  th, td { border: 1px solid #d9d9e3; padding: 0.4em 0.6em; text-align: left; vertical-align: top; }
+  th { background: #312a8c; color: #fff; border-color: #312a8c; font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif; font-weight: 700; }
+  tbody tr:nth-child(even) td { background: #f6f5fc; }
   caption {
-    caption-side: top; text-align: left; font-family: "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
+    caption-side: top; text-align: left; font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
     font-size: 0.85em; color: #555; margin-bottom: 0.3em;
   }
   caption::before { content: "Table " counter(table) ". "; font-weight: 700; }
   .diagram { counter-increment: figure; text-align: center; margin: 0.7em 0; break-inside: avoid; }
   .diagram svg { max-width: 100%; max-height: 72mm; width: auto; height: auto; }
   .diagram figcaption {
-    font-family: "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
+    font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
     font-size: 0.85em; color: #555; margin-top: 0.3em;
   }
   .diagram figcaption::before { content: "Figure " counter(figure) ". "; font-weight: 700; }
@@ -213,10 +215,24 @@ const PDF_CSS = `
   .objectives, .takeaways, .further, .mistakes, .examples { background: #f6f8fa; padding: 0.45em 0.7em; margin: 0.55em 0; break-inside: avoid; }
   .objectives ul, .takeaways ul, .further ul { margin: 0.2em 0; }
   li { margin: 0.12em 0; }
+  /* Accent the lighter callouts; make Key Takeaways a branded panel. */
+  .objectives { border-left: 3px solid #312a8c; }
+  .further { border-left: 3px solid #16a34a; }
+  .takeaways {
+    background: #1e1b4b; color: #eceaf6; border-radius: 8px;
+    padding: 0.8em 1.05em; margin: 0.9em 0; break-inside: avoid;
+  }
+  .takeaways h3 {
+    color: #4ade80; text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: 0.82em; margin: 0 0 0.45em;
+  }
+  .takeaways ul { margin: 0.2em 0 0; }
+  .takeaways strong { color: #fff; }
+  .takeaways a { color: #9fd8ff; }
   .quiz-chapter { margin-bottom: 1.2em; }
   .quiz-q { margin: 0.6em 0; break-inside: avoid; }
   .quiz-qtext, .quiz-qtext p {
-    font-family: "Helvetica Neue", "Liberation Sans", Arial, sans-serif; font-weight: 600;
+    font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif; font-weight: 600;
   }
   .quiz-options { font-size: 0.9em; }
   .answer { margin: 0.4em 0; break-inside: avoid; }
