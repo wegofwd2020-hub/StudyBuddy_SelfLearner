@@ -130,11 +130,12 @@ describe("buildPdfHtml — textbook layout", () => {
 
 describe("buildPdfHtml — typography & numbering CSS", () => {
   const html = buildPdfHtml(book());
-  it("uses sans-serif headings and counter-based Figure/Table numbering", () => {
+  it("uses sans-serif headings and per-chapter float numbering + list styles", () => {
     expect(html).toMatch(/h1, h2, h3[^{]*\{\s*font-family:\s*"Nimbus Sans"/);
-    expect(html).toContain("counter-increment: figure");
-    expect(html).toContain('content: "Figure " counter(figure)');
-    expect(html).toContain("counter-increment: table");
-    expect(html).toContain('content: "Table " counter(table)');
+    expect(html).toContain(".toc-part"); // Part labels in the grouped TOC
+    expect(html).toContain("nav.floatlist"); // List of Figures / List of Tables
+    expect(html).toContain(".fnum"); // figure/table number styling
+    // page references (TOC + float lists) resolved by the paged-media engine
+    expect(html).toContain("target-counter(attr(href url), page)");
   });
 });
