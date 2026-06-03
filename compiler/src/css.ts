@@ -65,7 +65,6 @@ export const STYLESHEET = `
   td { padding: 0.45em 0.8em; border: 1px solid ${BRAND.lavenderBorder}; }
   tbody tr:nth-child(even) td { background: #f6f5fc; }
   caption { caption-side: top; text-align: left; font-family: ${SANS}; font-size: 0.85em; color: #666; margin-bottom: 0.3em; }
-  caption::before { content: "Table " counter(table) ". "; font-weight: 600; }
   hr.section-divider { border: none; border-top: 1px solid #ddd; margin: 1.4em 0; }
   .synopsis {
     color: #444; padding: 0.8em; margin: 0.8em 0 1.2em;
@@ -111,7 +110,13 @@ export const STYLESHEET = `
   .diagram--placeholder { background: #f6f6f6; border-color: #e3e3e3; }
   .diagram--placeholder pre { white-space: pre-wrap; text-align: left; }
   .diagram figcaption { font-family: ${SANS}; font-size: 0.85em; color: ${BRAND.indigo}; margin-top: 0.5em; }
-  .diagram figcaption::before { content: "Figure " counter(figure) ". "; font-weight: 700; }
+  .fnum { font-weight: 700; color: ${BRAND.indigo}; }
+  .floatlist ol { list-style: none; padding-left: 0; }
+  .floatlist li { margin: 0.4em 0; }
+  .floatlist a { text-decoration: none; color: #1a1a1a; }
+  .floatlist .fnum { display: inline-block; min-width: 5em; }
+  .glossary dt { font-family: ${SANS}; font-weight: 700; color: ${BRAND.indigoDark}; margin-top: 0.7em; }
+  .glossary dd { margin: 0.1em 0 0.5em; color: #333; }
   math { font-size: 1.05em; }
   img { max-width: 100%; height: auto; display: block; margin: 0.9em auto; }
 `;

@@ -7,6 +7,7 @@ import { EmptyBookError } from "./epub";
 import { SOURCE_SERIF_FONTFACE } from "./fonts";
 import { buildCoverSvg, coverInputForBook } from "./cover";
 import { colophonSection } from "./colophon";
+import { numberFloats, type FloatRef } from "./floats";
 
 // Build the single-document HTML for the print/PDF target — a *textbook
 // compilation* (ADR-004 D5), distinct from the EPUB's per-topic layout:
@@ -81,54 +82,6 @@ function renderAnswers(sets: readonly QuizSet[], diagrams: DiagramRenderer): str
 
 export interface PdfHtmlOptions {
   diagrams?: DiagramRenderer;
-}
-
-interface FloatRef {
-  num: string; // chapter.serial, e.g. "7.1"
-  caption: string;
-  id: string; // anchor target, e.g. "fig-7-1"
-}
-
-// Number a chapter's figures and tables per-chapter ("Figure C.N — caption",
-// "Table C.N — caption"), give each a stable id, and collect them so the front
-// matter can build a List of Figures / List of Tables that pages-reference them.
-// Compiler-computed (not CSS counters) so the body labels and the front-matter
-// lists always agree.
-function numberFloats(
-  html: string,
-  ch: number,
-  figs: FloatRef[],
-  tbls: FloatRef[],
-  tableCaps: string[] = [],
-): string {
-  let f = 0;
-  let t = 0;
-  html = html.replace(
-    /<figure class="diagram">([\s\S]*?)<figcaption>([\s\S]*?)<\/figcaption><\/figure>/g,
-    (_m, inner: string, cap: string) => {
-      f += 1;
-      const num = `${ch}.${f}`;
-      const id = `fig-${ch}-${f}`;
-      const c = cap.trim();
-      figs.push({ num, caption: c, id });
-      const label = c
-        ? `<span class="fnum">Figure ${num}</span> — ${c}`
-        : `<span class="fnum">Figure ${num}</span>`;
-      return `<figure class="diagram" id="${id}">${inner}<figcaption>${label}</figcaption></figure>`;
-    },
-  );
-  html = html.replace(/<table>\n<caption>([\s\S]*?)<\/caption>/g, (_m, cap: string) => {
-    t += 1;
-    const num = `${ch}.${t}`;
-    const id = `tbl-${ch}-${t}`;
-    const c = cap.trim() || (tableCaps[t - 1] ?? "").trim();
-    tbls.push({ num, caption: c, id });
-    const label = c
-      ? `<span class="fnum">Table ${num}</span> — ${c}`
-      : `<span class="fnum">Table ${num}</span>`;
-    return `<table id="${id}">\n<caption>${label}</caption>`;
-  });
-  return html;
 }
 
 export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
