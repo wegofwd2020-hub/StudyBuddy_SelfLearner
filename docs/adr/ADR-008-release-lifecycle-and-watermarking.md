@@ -1,6 +1,6 @@
 # ADR-008 — Release lifecycle & watermarking (draft → release → editions)
 
-**Status:** Proposed — 2026-06-03
+**Status:** Accepted — 2026-06-03
 **Decision-maker:** Sivakumar Mambakkam
 **Relates to:** ADR-007 (book templates / theme system), ADR-004 (two-product
 split + artifacts), `docs/ARTIFACT_PIPELINE.md`.
