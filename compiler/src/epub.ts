@@ -11,7 +11,20 @@ import { STYLESHEET } from "./css";
 import { escapeHtml } from "./html";
 import { buildCoverSvgFile, buildCoverXhtml, coverInputForBook } from "./cover";
 import { colophonSection } from "./colophon";
+import { numberFloats, type FloatRef } from "./floats";
 import type { Book } from "./types";
+
+// A figure/table reference plus the chapter file it lives in (for cross-document
+// links in the front-matter List of Figures / List of Tables).
+type CrossFloat = FloatRef & { href: string };
+
+// A front/back-matter document (List of Figures, List of Tables, Glossary).
+interface AuxDoc {
+  id: string;
+  href: string;
+  title: string;
+  xhtml: string;
+}
 
 // Compile a canonical Book (book.json) into a self-contained EPUB3 (milestone 2).
 // Content is pre-rendered (MathML + diagram fragments) so the artifact needs no
@@ -122,6 +135,8 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
   const navSubjects: NavSubject[] = [];
   const images: ImageRes[] = [];
   const seenImages = new Map<string, string>();
+  const allFigs: CrossFloat[] = [];
+  const allTbls: CrossFloat[] = [];
   let n = 0;
   for (const subject of book.toc.subjects) {
     const items: NavSubject["items"] = [];
@@ -132,11 +147,17 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
       const idx = String(n).padStart(3, "0");
       const href = `chapters/ch-${idx}.xhtml`;
       const title = topic.title || unit.title || `Topic ${n}`;
+      const cf: FloatRef[] = [];
+      const ct: FloatRef[] = [];
+      const tableCaps = (topic.lesson as { table_captions?: string[] }).table_captions ?? [];
+      const body = numberFloats(renderTopicBody(topic, diagrams), n, cf, ct, tableCaps);
       const xhtml = packImages(
-        xhtmlDocument(title, renderTopicBody(topic, diagrams), "../css/style.css", lang),
+        xhtmlDocument(title, body, "../css/style.css", lang),
         images,
         seenImages,
       );
+      for (const x of cf) allFigs.push({ ...x, href });
+      for (const x of ct) allTbls.push({ ...x, href });
       chapters.push({
         id: `ch${idx}`,
         href,
@@ -164,12 +185,25 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
   );
   const colophonXhtml = buildColophon(book, lang);
 
+  // Front matter: List of Figures / List of Tables. Reflowable EPUB has no fixed
+  // pages, so these are link lists (no page numbers), unlike the PDF. Back
+  // matter: a Glossary from book.metadata.glossary.
+  const auxFront: AuxDoc[] = [];
+  if (allFigs.length)
+    auxFront.push({ id: "lof", href: "lof.xhtml", title: "List of Figures", xhtml: floatListDoc("List of Figures", "Figure", allFigs, lang) });
+  if (allTbls.length)
+    auxFront.push({ id: "lot", href: "lot.xhtml", title: "List of Tables", xhtml: floatListDoc("List of Tables", "Table", allTbls, lang) });
+  const auxBack: AuxDoc[] = [];
+  const glossary = (book.metadata as { glossary?: { term: string; definition: string }[] } | undefined)?.glossary;
+  if (glossary && glossary.length)
+    auxBack.push({ id: "glossary", href: "glossary.xhtml", title: "Glossary", xhtml: glossaryDoc(glossary, lang) });
+
   const zip = new JSZip();
   // mimetype MUST be the first entry and stored uncompressed (EPUB OCF rule).
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
   zip.file("META-INF/container.xml", CONTAINER_XML);
-  zip.file("OEBPS/content.opf", buildOpf(book, chapters, images));
-  zip.file("OEBPS/nav.xhtml", buildNav(navSubjects, lang));
+  zip.file("OEBPS/content.opf", buildOpf(book, chapters, images, auxFront, auxBack));
+  zip.file("OEBPS/nav.xhtml", buildNav(navSubjects, lang, auxFront, auxBack));
   // EPUB2 NCX navigation alongside the EPUB3 nav — older/"traditional" readers
   // require it and render blank pages without it.
   zip.file("OEBPS/toc.ncx", buildNcx(book, chapters));
@@ -178,6 +212,7 @@ export async function compileEpub(book: Book, opts: CompileOptions = {}): Promis
   zip.file("OEBPS/cover.svg", coverSvg);
   zip.file("OEBPS/title.xhtml", titleXhtml);
   zip.file("OEBPS/colophon.xhtml", colophonXhtml);
+  for (const d of [...auxFront, ...auxBack]) zip.file(`OEBPS/${d.href}`, d.xhtml);
   for (const ch of chapters) zip.file(`OEBPS/${ch.href}`, ch.xhtml);
   for (const img of images) zip.file(`OEBPS/${img.href}`, img.bytes);
 
@@ -212,8 +247,14 @@ ${navPoints}
 `;
 }
 
-function buildNav(subjects: NavSubject[], lang = "en"): string {
+function buildNav(
+  subjects: NavSubject[],
+  lang = "en",
+  auxFront: AuxDoc[] = [],
+  auxBack: AuxDoc[] = [],
+): string {
   let ol = "<ol>";
+  for (const d of auxFront) ol += `<li><a href="${escapeHtml(d.href)}">${escapeHtml(d.title)}</a></li>`;
   for (const s of subjects) {
     ol += `<li><span>${escapeHtml(s.label)}</span><ol>`;
     for (const it of s.items) {
@@ -221,6 +262,7 @@ function buildNav(subjects: NavSubject[], lang = "en"): string {
     }
     ol += "</ol></li>";
   }
+  for (const d of auxBack) ol += `<li><a href="${escapeHtml(d.href)}">${escapeHtml(d.title)}</a></li>`;
   ol += "</ol>";
   const body = `<nav epub:type="toc" id="toc"><h1>Contents</h1>${ol}</nav>`;
   return xhtmlDocument("Contents", body, "css/style.css", lang);
@@ -230,6 +272,28 @@ function buildNav(subjects: NavSubject[], lang = "en"): string {
 // Shares colophonSection() with the PDF path so the two artifacts match.
 function buildColophon(book: Book, lang: string): string {
   return xhtmlDocument(book.title, colophonSection(book), "css/style.css", lang);
+}
+
+// Front-matter list (List of Figures / List of Tables) as a link list. EPUB is
+// reflowable, so each entry links to its float by id — no page numbers (the PDF
+// path adds those via paged-media target-counter).
+function floatListDoc(title: string, kind: string, items: CrossFloat[], lang: string): string {
+  const lis = items
+    .map(
+      (x) =>
+        `<li><a href="${escapeHtml(x.href)}#${escapeHtml(x.id)}"><span class="fnum">${kind} ${escapeHtml(x.num)}</span> ${escapeHtml(x.caption)}</a></li>`,
+    )
+    .join("");
+  const body = `<section class="floatlist"><h1>${escapeHtml(title)}</h1><ol>${lis}</ol></section>`;
+  return xhtmlDocument(title, body, "css/style.css", lang);
+}
+
+function glossaryDoc(glossary: { term: string; definition: string }[], lang: string): string {
+  const dl = glossary
+    .map((g) => `<dt>${escapeHtml(g.term)}</dt><dd>${escapeHtml(g.definition)}</dd>`)
+    .join("");
+  const body = `<section class="glossary" epub:type="glossary"><h1>Glossary</h1><dl>${dl}</dl></section>`;
+  return xhtmlDocument("Glossary", body, "css/style.css", lang);
 }
 
 // EPUB Accessibility 1.1 metadata (schema.org a11y vocabulary, emitted with the
@@ -271,7 +335,13 @@ function accessibilityMeta(book: Book, chapters: Chapter[], images: ImageRes[]):
   return out;
 }
 
-function buildOpf(book: Book, chapters: Chapter[], images: ImageRes[] = []): string {
+function buildOpf(
+  book: Book,
+  chapters: Chapter[],
+  images: ImageRes[] = [],
+  auxFront: AuxDoc[] = [],
+  auxBack: AuxDoc[] = [],
+): string {
   const manifest = [
     '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
     '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>',
@@ -285,6 +355,9 @@ function buildOpf(book: Book, chapters: Chapter[], images: ImageRes[] = []): str
     ...images.map(
       (img) => `<item id="${img.id}" href="${escapeHtml(img.href)}" media-type="${img.mediaType}"/>`,
     ),
+    ...[...auxFront, ...auxBack].map(
+      (d) => `<item id="${d.id}" href="${escapeHtml(d.href)}" media-type="application/xhtml+xml"/>`,
+    ),
     ...chapters.map((ch) => {
       const props = [ch.hasMath ? "mathml" : "", ch.hasSvg ? "svg" : ""].filter(Boolean).join(" ");
       const attr = props ? ` properties="${props}"` : "";
@@ -295,7 +368,9 @@ function buildOpf(book: Book, chapters: Chapter[], images: ImageRes[] = []): str
     '<itemref idref="cover"/>',
     '<itemref idref="titlepage"/>',
     '<itemref idref="colophon"/>',
+    ...auxFront.map((d) => `<itemref idref="${d.id}"/>`),
     ...chapters.map((ch) => `<itemref idref="${ch.id}"/>`),
+    ...auxBack.map((d) => `<itemref idref="${d.id}"/>`),
   ];
 
   const m = book.metadata ?? {};
