@@ -83,6 +83,54 @@ export interface PdfHtmlOptions {
   diagrams?: DiagramRenderer;
 }
 
+interface FloatRef {
+  num: string; // chapter.serial, e.g. "7.1"
+  caption: string;
+  id: string; // anchor target, e.g. "fig-7-1"
+}
+
+// Number a chapter's figures and tables per-chapter ("Figure C.N — caption",
+// "Table C.N — caption"), give each a stable id, and collect them so the front
+// matter can build a List of Figures / List of Tables that pages-reference them.
+// Compiler-computed (not CSS counters) so the body labels and the front-matter
+// lists always agree.
+function numberFloats(
+  html: string,
+  ch: number,
+  figs: FloatRef[],
+  tbls: FloatRef[],
+  tableCaps: string[] = [],
+): string {
+  let f = 0;
+  let t = 0;
+  html = html.replace(
+    /<figure class="diagram">([\s\S]*?)<figcaption>([\s\S]*?)<\/figcaption><\/figure>/g,
+    (_m, inner: string, cap: string) => {
+      f += 1;
+      const num = `${ch}.${f}`;
+      const id = `fig-${ch}-${f}`;
+      const c = cap.trim();
+      figs.push({ num, caption: c, id });
+      const label = c
+        ? `<span class="fnum">Figure ${num}</span> — ${c}`
+        : `<span class="fnum">Figure ${num}</span>`;
+      return `<figure class="diagram" id="${id}">${inner}<figcaption>${label}</figcaption></figure>`;
+    },
+  );
+  html = html.replace(/<table>\n<caption>([\s\S]*?)<\/caption>/g, (_m, cap: string) => {
+    t += 1;
+    const num = `${ch}.${t}`;
+    const id = `tbl-${ch}-${t}`;
+    const c = cap.trim() || (tableCaps[t - 1] ?? "").trim();
+    tbls.push({ num, caption: c, id });
+    const label = c
+      ? `<span class="fnum">Table ${num}</span> — ${c}`
+      : `<span class="fnum">Table ${num}</span>`;
+    return `<table id="${id}">\n<caption>${label}</caption>`;
+  });
+  return html;
+}
+
 export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
   const diagrams = opts.diagrams ?? new PassthroughDiagramRenderer();
   const chapters = orderedChapters(book);
@@ -90,25 +138,49 @@ export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
 
   const withQuizzes = chapters.filter((c) => c.topic.quizSets && c.topic.quizSets.length);
 
-  // ── Table of contents (page numbers added by CSS target-counter) ───────────
-  const tocItems = chapters.map(
-    (c) => `<li><a href="#${c.id}">${escapeHtml(c.title)}</a></li>`,
-  );
-  if (withQuizzes.length) {
-    tocItems.push('<li><a href="#quizzes">Quizzes</a></li>');
-    tocItems.push('<li><a href="#answers">Answers</a></li>');
-  }
-  const toc = `<nav class="toc" id="toc"><h1>Contents</h1><ol>${tocItems.join("")}</ol></nav>`;
-
-  // ── Chapters: lesson + tutorial (renderLesson emits the <h1> chapter head) ──
+  // ── Chapters: lesson + tutorial, with per-chapter figure/table numbering ────
+  const figs: FloatRef[] = [];
+  const tbls: FloatRef[] = [];
   const chaptersHtml = chapters
     .map((c) => {
-      let s = `<section class="chapter" id="${c.id}">`;
-      s += renderLesson(c.topic.lesson, diagrams);
-      if (c.topic.tutorial) s += renderTutorial(c.topic.tutorial, diagrams);
-      return s + "</section>";
+      let body = renderLesson(c.topic.lesson, diagrams);
+      if (c.topic.tutorial) body += renderTutorial(c.topic.tutorial, diagrams);
+      const tableCaps = (c.topic.lesson as { table_captions?: string[] }).table_captions ?? [];
+      body = numberFloats(body, c.number, figs, tbls, tableCaps);
+      return `<section class="chapter" id="${c.id}">${body}</section>`;
     })
     .join("");
+
+  // ── Table of contents, grouped by Part (page numbers via CSS target-counter) ─
+  const byTopicId = new Map(chapters.map((c) => [c.topic.topicId, c]));
+  let tocItems = "";
+  for (const subject of book.toc.subjects) {
+    const partChaps = subject.units
+      .map((u) => (u.id ? byTopicId.get(u.id) : undefined))
+      .filter((c): c is PdfChapter => Boolean(c));
+    if (!partChaps.length) continue;
+    tocItems += `<li class="toc-part">${escapeHtml(subject.subject_label)}</li>`;
+    for (const c of partChaps) tocItems += `<li><a href="#${c.id}">${escapeHtml(c.title)}</a></li>`;
+  }
+  if (withQuizzes.length) {
+    tocItems += '<li><a href="#quizzes">Quizzes</a></li><li><a href="#answers">Answers</a></li>';
+  }
+  const toc = `<nav class="toc" id="toc"><h1>Contents</h1><ol>${tocItems}</ol></nav>`;
+
+  // ── List of Figures / List of Tables (front matter, after the TOC) ──────────
+  const floatList = (cls: string, title: string, items: FloatRef[], kind: string): string =>
+    items.length === 0
+      ? ""
+      : `<nav class="floatlist ${cls}"><h1>${title}</h1><ol>` +
+        items
+          .map(
+            (x) =>
+              `<li><a href="#${x.id}"><span class="fnum">${kind} ${x.num}</span> ${escapeHtml(x.caption)}</a></li>`,
+          )
+          .join("") +
+        `</ol></nav>`;
+  const lof = floatList("lof", "List of Figures", figs, "Figure");
+  const lot = floatList("lot", "List of Tables", tbls, "Table");
 
   // ── Quizzes + Answers sections (grouped by chapter) ────────────────────────
   let quizzesHtml = "";
@@ -126,6 +198,18 @@ export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
     answersHtml = `<section class="answers" id="answers"><h1>Answers</h1>${byChapter(renderAnswers)}</section>`;
   }
 
+  // ── Glossary (back matter) — from book.metadata.glossary if present ─────────
+  const glossary = (book.metadata as { glossary?: { term: string; definition: string }[] } | undefined)
+    ?.glossary;
+  const glossaryHtml =
+    glossary && glossary.length
+      ? `<section class="glossary" id="glossary"><h1>Glossary</h1><dl>` +
+        glossary
+          .map((g) => `<dt>${escapeHtml(g.term)}</dt><dd>${escapeHtml(g.definition)}</dd>`)
+          .join("") +
+        `</dl></section>`
+      : "";
+
   const coverPage = `<section class="cover-page">${buildCoverSvg(coverInputForBook(book))}</section>`;
   const colophonPage = colophonSection(book);
   const lang = book.metadata?.language || "en";
@@ -141,9 +225,12 @@ export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
 ${coverPage}
 ${colophonPage}
 ${toc}
+${lof}
+${lot}
 ${chaptersHtml}
 ${quizzesHtml}
 ${answersHtml}
+${glossaryHtml}
 </body>
 </html>
 `;
@@ -167,15 +254,17 @@ const PDF_CSS = `
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
+    break-after: avoid;   /* keep a heading with the content that follows it */
+    break-inside: avoid;
   }
   h1 { font-size: 1.6em; margin: 0 0 0.45em; }
   h2 { font-size: 1.25em; margin: 1.1em 0 0.35em; }
   h3 { font-size: 1.08em; margin: 0.9em 0 0.25em; color: #333; }
-  p { margin: 0.55em 0; }
+  p { margin: 0.55em 0; orphans: 2; widows: 2; }
   ul, ol { padding-left: 1.4em; }
   code { font-family: "Courier New", monospace; font-size: 0.9em; background: #f3f3f3; padding: 0 0.2em; }
   pre { background: #f6f6f6; border: 1px solid #ddd; padding: 0.6em; white-space: pre-wrap; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.95em; counter-increment: table; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.95em; counter-increment: table; break-inside: avoid; }
   th, td { border: 1px solid #d9d9e3; padding: 0.4em 0.6em; text-align: left; vertical-align: top; }
   th { background: #312a8c; color: #fff; border-color: #312a8c; font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif; font-weight: 700; }
   tbody tr:nth-child(even) td { background: #f6f5fc; }
@@ -183,14 +272,13 @@ const PDF_CSS = `
     caption-side: top; text-align: left; font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
     font-size: 0.85em; color: #555; margin-bottom: 0.3em;
   }
-  caption::before { content: "Table " counter(table) ". "; font-weight: 700; }
-  .diagram { counter-increment: figure; text-align: center; margin: 1.1em 0; break-inside: avoid; }
+  .diagram { text-align: center; margin: 1.1em 0; break-inside: avoid; break-before: avoid; }
   .diagram svg { max-width: 100%; max-height: 84mm; width: auto; height: auto; }
   .diagram figcaption {
     font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
     font-size: 0.85em; color: #555; margin-top: 0.3em;
   }
-  .diagram figcaption::before { content: "Figure " counter(figure) ". "; font-weight: 700; }
+  .fnum { font-weight: 800; color: #312a8c; }
 
   /* Cover: its own page (no @page margin). The SVG (5:8) fills the full A4
      height edge-to-edge; its narrower width centres with slim side margins. */
@@ -204,11 +292,25 @@ const PDF_CSS = `
   .colophon hr { width: 30%; margin: 1.2em auto; border: none; border-top: 1px solid #ccc; }
   .colophon .identifier, .colophon .colophon-note { font-size: 0.85em; color: #777; }
 
-  nav.toc { break-after: page; }
-  nav.toc ol { list-style: none; padding: 0; }
-  nav.toc li { margin: 0.35em 0; }
-  nav.toc a { text-decoration: none; color: #111; }
-  nav.toc a::after { content: leader('.') target-counter(attr(href url), page); color: #777; }
+  nav.toc, nav.floatlist { break-after: page; }
+  nav.toc ol, nav.floatlist ol { list-style: none; padding: 0; }
+  nav.toc li, nav.floatlist li { margin: 0.35em 0; }
+  nav.toc a, nav.floatlist a { text-decoration: none; color: #111; }
+  nav.toc a::after, nav.floatlist a::after { content: leader('.') target-counter(attr(href url), page); color: #777; }
+  .toc-part {
+    font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
+    font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
+    color: #312a8c; font-size: 0.82em; margin: 1.1em 0 0.3em;
+  }
+  nav.floatlist .fnum { display: inline-block; min-width: 4.6em; }
+
+  .glossary { break-before: page; }
+  .glossary dl { margin: 0.5em 0; }
+  .glossary dt {
+    font-family: "Nimbus Sans", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
+    font-weight: 700; color: #1e1b4b; margin-top: 0.7em; break-after: avoid;
+  }
+  .glossary dd { margin: 0.1em 0 0.4em 0; color: #333; break-inside: avoid; }
 
   .chapter, .quizzes, .answers { break-before: page; }
   .synopsis { font-style: italic; color: #444; margin: 0.6em 0 0.95em; }
