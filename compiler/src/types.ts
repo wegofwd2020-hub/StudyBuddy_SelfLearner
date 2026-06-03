@@ -119,6 +119,14 @@ export interface BookMetadata {
   series?: string; // belongs-to-collection
   seriesIndex?: number; // group-position within the series
   accessibility?: BookAccessibility; // EPUB Accessibility 1.1 (schema.org a11y) metadata
+
+  // Release lifecycle (ADR-008). Absent or "release" → no watermark.
+  status?: "draft" | "release"; // "draft" watermarks the artifact
+  version?: string; // e.g. "1.0"
+  edition?: string; // e.g. "First Edition"
+  releaseDate?: string; // ISO date, set on release
+  watermark?: string; // explicit override text; else "DRAFT" when status === "draft"
+  revisionHistory?: { version: string; date: string; notes?: string }[];
 }
 
 // EPUB Accessibility 1.1 metadata (schema.org accessibility vocabulary →

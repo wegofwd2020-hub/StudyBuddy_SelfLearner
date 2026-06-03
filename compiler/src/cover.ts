@@ -1,6 +1,7 @@
 import { escapeHtml } from "./html";
 import { BRAND } from "./tokens";
 import { MENTIBLE_LOGO_DATA_URI } from "./brandLogo";
+import { editionLabel } from "./release";
 import type { Book } from "./types";
 
 // Generates the book's cover — the "Editorial" design: a deep indigo upper field
@@ -28,6 +29,7 @@ export interface CoverInput {
   tagline?: string; // optional italic line
   author?: string; // byline, e.g. "Sridhar Parthasarathy"
   brand?: string; // footer wordmark, default "MENTIBLE"
+  edition?: string; // "DRAFT" or "v1.0 · First Edition" (ADR-008)
 }
 
 // Split "Main (Sub)" or "Main: Sub" into a big main title + a smaller subtitle.
@@ -140,6 +142,16 @@ export function buildCoverSvg(input: CoverInput): string {
     authorBlock =
       `<text x="${MARGIN_L + 6}" y="${y}" fill="${BRAND.indigo}" font-family="${SERIF}" ` +
       `font-size="60" font-weight="700">${escapeHtml("by " + input.author)}</text>`;
+    y += 90;
+  }
+
+  // Edition / draft stamp (ADR-008): "DRAFT" in red, or "v1.0 · First Edition".
+  let editionBlock = "";
+  if (input.edition) {
+    const draft = input.edition === "DRAFT";
+    editionBlock =
+      `<text x="${MARGIN_L + 6}" y="${y}" fill="${draft ? "#b91c1c" : BRAND.green}" font-family="${SANS}" ` +
+      `font-size="36" letter-spacing="2" font-weight="800">${escapeHtml(input.edition)}</text>`;
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${VW} ${VH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeHtml(input.title)}">
@@ -192,6 +204,7 @@ export function buildCoverSvg(input: CoverInput): string {
   ${subBlock}
   ${taglineBlock}
   ${authorBlock}
+  ${editionBlock}
   <line x1="${MARGIN_L}" y1="2392" x2="${MARGIN_R}" y2="2392" stroke="#d9d2f5" stroke-width="2"/>
   <image href="${MENTIBLE_LOGO_DATA_URI}" xlink:href="${MENTIBLE_LOGO_DATA_URI}" x="${MARGIN_L}" y="2404" width="88" height="84"/>
   <text x="${MARGIN_L + 110}" y="2466" fill="#5b5489" font-family="${SANS}" font-size="42" letter-spacing="7" font-weight="700">${escapeHtml(brand)}</text>
@@ -243,5 +256,10 @@ export function coverInputForBook(book: Book): CoverInput {
     }
     if (tagline !== undefined) break;
   }
-  return { title: book.title, tagline, author: book.metadata?.author };
+  return {
+    title: book.title,
+    tagline,
+    author: book.metadata?.author,
+    edition: editionLabel(book.metadata) || undefined,
+  };
 }

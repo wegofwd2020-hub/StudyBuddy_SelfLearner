@@ -117,6 +117,9 @@ export const STYLESHEET = `
   .floatlist .fnum { display: inline-block; min-width: 5em; }
   .glossary dt { font-family: ${SANS}; font-weight: 700; color: ${BRAND.indigoDark}; margin-top: 0.7em; }
   .glossary dd { margin: 0.1em 0 0.5em; color: #333; }
+  .colophon .draft-notice { color: #b91c1c; font-weight: 700; }
+  .colophon .edition { color: ${BRAND.green}; font-weight: 700; }
+  .colophon .revisions ul { padding-left: 1.2em; font-size: 0.9em; color: #555; }
   math { font-size: 1.05em; }
   img { max-width: 100%; height: auto; display: block; margin: 0.9em auto; }
 `;

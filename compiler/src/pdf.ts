@@ -8,6 +8,7 @@ import { SOURCE_SERIF_FONTFACE } from "./fonts";
 import { buildCoverSvg, coverInputForBook } from "./cover";
 import { colophonSection } from "./colophon";
 import { numberFloats, type FloatRef } from "./floats";
+import { watermarkText } from "./release";
 
 // Build the single-document HTML for the print/PDF target — a *textbook
 // compilation* (ADR-004 D5), distinct from the EPUB's per-topic layout:
@@ -82,6 +83,22 @@ function renderAnswers(sets: readonly QuizSet[], diagrams: DiagramRenderer): str
 
 export interface PdfHtmlOptions {
   diagrams?: DiagramRenderer;
+}
+
+// Draft watermark (ADR-008) as an @page background image. A faint, rotated SVG
+// set as the page background repeats on EVERY page in the paged-media engine
+// (unlike position:fixed, which Vivliostyle paints only once), and sits behind
+// the content so text stays legible. textLength keeps any phrase a consistent
+// diagonal width.
+function watermarkPageCss(text: string): string {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297">` +
+    `<text x="105" y="150" fill="#312a8c" fill-opacity="0.10" ` +
+    `font-family="Helvetica,Arial,sans-serif" font-weight="bold" font-size="40" ` +
+    `text-anchor="middle" textLength="150" lengthAdjust="spacingAndGlyphs" ` +
+    `transform="rotate(-45 105 150)">${escapeHtml(text)}</text></svg>`;
+  const uri = "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64");
+  return `@page { background-image: url("${uri}"); background-position: center center; background-repeat: no-repeat; }`;
 }
 
 export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
@@ -167,12 +184,16 @@ export function buildPdfHtml(book: Book, opts: PdfHtmlOptions = {}): string {
   const colophonPage = colophonSection(book);
   const lang = book.metadata?.language || "en";
 
+  const wm = watermarkText(book.metadata);
+  const watermarkCss = wm ? watermarkPageCss(wm) : "";
+
   return `<!DOCTYPE html>
 <html lang="${escapeHtml(lang)}">
 <head>
 <meta charset="utf-8"/>
 <title>${escapeHtml(book.title)}</title>
-<style>${PDF_CSS}</style>
+<style>${PDF_CSS}
+${watermarkCss}</style>
 </head>
 <body>
 ${coverPage}
@@ -244,6 +265,11 @@ const PDF_CSS = `
   .colophon .byline { font-size: 1.05em; color: #333; }
   .colophon hr { width: 30%; margin: 1.2em auto; border: none; border-top: 1px solid #ccc; }
   .colophon .identifier, .colophon .colophon-note { font-size: 0.85em; color: #777; }
+  .colophon .draft-notice { color: #b91c1c; font-weight: 800; letter-spacing: 1px; }
+  .colophon .edition { color: #16a34a; font-weight: 700; }
+  .colophon .revisions { text-align: left; max-width: 64%; margin: 1.4em auto 0; }
+  .colophon .revisions h2 { font-size: 1em; }
+  .colophon .revisions ul { padding-left: 1.2em; font-size: 0.85em; color: #555; }
 
   nav.toc, nav.floatlist { break-after: page; }
   nav.toc ol, nav.floatlist ol { list-style: none; padding: 0; }
