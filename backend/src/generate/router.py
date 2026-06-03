@@ -139,8 +139,10 @@ async def submit_generate(
         language=body.language,
         format=body.format,
         depth=body.depth,
+        target_pages=body.target_pages,
         prior_knowledge=body.prior_knowledge,
         framing=body.framing,
+        instructions=body.instructions,
         model=body.model,
         redis_client=r,
     )

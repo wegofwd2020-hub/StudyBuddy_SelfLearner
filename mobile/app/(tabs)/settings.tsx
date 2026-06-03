@@ -18,17 +18,22 @@ import {
 import { useRouter } from "expo-router";
 import { BRAND_NAME } from "@/constants/brand";
 import { colors, radius, spacing, typography } from "@/constants/theme";
+import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
+import { loadDefaultParams, saveDefaultParams } from "@/storage/settingsStore";
+import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [draftKey, setDraftKey] = useState("");
   const [savedMask, setSavedMask] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [params, setParams] = useState<GenerationParams>(DEFAULT_GENERATION_PARAMS);
 
   useEffect(() => {
     loadApiKey().then((key) => {
       if (key) setSavedMask(maskApiKey(key));
     });
+    loadDefaultParams().then(setParams);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -66,6 +71,12 @@ export default function SettingsScreen() {
         },
       ],
     );
+  }, []);
+
+  // Persist the global default immediately on each change.
+  const handleParamsChange = useCallback((next: GenerationParams) => {
+    setParams(next);
+    void saveDefaultParams(next);
   }, []);
 
   return (
@@ -128,6 +139,15 @@ export default function SettingsScreen() {
           <Text style={styles.saveBtnText}>{saving ? "Saving…" : "Save"}</Text>
         </Pressable>
       </View>
+
+      <View style={styles.divider} />
+
+      <Text style={styles.sectionLabel}>Generation defaults</Text>
+      <Text style={styles.helpText}>
+        Defaults for new books and one-off lessons. Each book keeps its own copy
+        you can adjust per book.
+      </Text>
+      <GenerationParamsEditor value={params} onChange={handleParamsChange} />
 
       <View style={styles.divider} />
 
