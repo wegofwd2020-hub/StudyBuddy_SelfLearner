@@ -36,24 +36,24 @@ const { submitGenerate } = require("../../src/api/client") as { submitGenerate: 
 const { loadApiKey } = require("../../src/secure/keyStore") as { loadApiKey: jest.Mock };
 const { loadLastLesson } = require("../../src/storage/lessonStore") as { loadLastLesson: jest.Mock };
 
-import HomeScreen from "../../app/(tabs)/index";
+import QueryScreen from "../../app/(tabs)/query";
 
 beforeEach(() => {
   jest.clearAllMocks();
   loadLastLesson.mockResolvedValue(null);
 });
 
-describe("HomeScreen", () => {
+describe("QueryScreen", () => {
   it("renders topic input and generate button", async () => {
     loadApiKey.mockResolvedValue("sk-ant-FAKE_KEY_test_12345");
-    render(<HomeScreen />);
+    render(<QueryScreen />);
     expect(screen.getByLabelText("Topic input")).toBeTruthy();
     expect(screen.getByLabelText("Generate lesson")).toBeTruthy();
   });
 
   it("shows key-not-set banner when no API key is stored", async () => {
     loadApiKey.mockResolvedValue(null);
-    render(<HomeScreen />);
+    render(<QueryScreen />);
     await waitFor(() => {
       expect(screen.getByText(/No API key set/)).toBeTruthy();
     });
@@ -61,14 +61,14 @@ describe("HomeScreen", () => {
 
   it("generate button is disabled when topic is empty", async () => {
     loadApiKey.mockResolvedValue("sk-ant-FAKE_KEY_test_12345");
-    render(<HomeScreen />);
+    render(<QueryScreen />);
     const btn = screen.getByLabelText("Generate lesson");
     expect(btn.props.accessibilityState.disabled).toBe(true);
   });
 
   it("generate button is enabled when topic is filled and key exists", async () => {
     loadApiKey.mockResolvedValue("sk-ant-FAKE_KEY_test_12345");
-    render(<HomeScreen />);
+    render(<QueryScreen />);
     const input = screen.getByLabelText("Topic input");
     fireEvent.changeText(input, "Photosynthesis");
     await waitFor(() => {
@@ -81,7 +81,7 @@ describe("HomeScreen", () => {
     loadApiKey.mockResolvedValue("sk-ant-FAKE_KEY_test_12345");
     submitGenerate.mockResolvedValue({ job_id: "job-1", status: "queued" });
 
-    render(<HomeScreen />);
+    render(<QueryScreen />);
     fireEvent.changeText(screen.getByLabelText("Topic input"), "Quadratic formula");
     fireEvent.press(screen.getByLabelText("Generate lesson"));
 
@@ -113,7 +113,7 @@ describe("HomeScreen", () => {
       },
     });
 
-    render(<HomeScreen />);
+    render(<QueryScreen />);
     await waitFor(() => {
       expect(screen.getByText("TCP three-way handshake")).toBeTruthy();
     });
