@@ -1,4 +1,5 @@
 import { escapeHtml } from "./html";
+import { editionLabel, isDraft } from "./release";
 import type { Book } from "./types";
 
 // The shared copyright / colophon page body (a single <section>), used by BOTH
@@ -20,10 +21,27 @@ export function colophonSection(book: Book): string {
   const p: string[] = [`<h1>${escapeHtml(book.title)}</h1>`];
   if (m.author) p.push(`<p class="byline">by ${escapeHtml(m.author)}</p>`);
   if (m.publisher) p.push(`<p class="publisher">${escapeHtml(m.publisher)}</p>`);
-  if (m.date) p.push(`<p class="pubdate">${escapeHtml(m.date)}</p>`);
+  // Release lifecycle (ADR-008): a draft notice, or the edition/version + date.
+  const edition = editionLabel(m);
+  if (isDraft(m)) {
+    p.push(`<p class="draft-notice">${escapeHtml(edition || "DRAFT")} — not for distribution</p>`);
+  } else if (edition) {
+    p.push(`<p class="edition">${escapeHtml(edition)}</p>`);
+  }
+  const pubDate = m.releaseDate || m.date;
+  if (pubDate) p.push(`<p class="pubdate">${escapeHtml(pubDate)}</p>`);
   p.push("<hr/>");
   p.push(`<p class="rights">${escapeHtml(rights)}</p>`);
   p.push(`<p class="identifier">${escapeHtml(m.identifier || book.id)}</p>`);
+  if (m.revisionHistory && m.revisionHistory.length) {
+    const rows = m.revisionHistory
+      .map(
+        (r) =>
+          `<li>v${escapeHtml(r.version)} — ${escapeHtml(r.date)}${r.notes ? ` · ${escapeHtml(r.notes)}` : ""}</li>`,
+      )
+      .join("");
+    p.push(`<div class="revisions"><h2>Revision history</h2><ul>${rows}</ul></div>`);
+  }
   p.push(`<p class="colophon-note">Compiled with Mentible.</p>`);
   return `<section epub:type="copyright-page" class="colophon">\n${p.join("\n")}\n</section>`;
 }
