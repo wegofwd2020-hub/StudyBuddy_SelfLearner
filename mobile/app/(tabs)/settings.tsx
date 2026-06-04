@@ -20,6 +20,7 @@ import { useRouter } from "expo-router";
 import { BRAND_NAME } from "@/constants/brand";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
+import { HelpButton } from "@/components/HelpButton";
 import { PageContainer } from "@/components/PageContainer";
 import { loadDefaultParams, saveDefaultParams } from "@/storage/settingsStore";
 import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
@@ -99,7 +100,10 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <Text style={styles.sectionLabel}>Anthropic API key</Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.sectionLabel}>Anthropic API key</Text>
+        <HelpButton topic="byok" label="BYOK" />
+      </View>
       <Text style={styles.helpText}>
         Your key is stored in the Android Keystore and sent directly to this
         app's backend, which calls Anthropic on your behalf. It is never logged
@@ -206,6 +210,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  labelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   // Brand lockup sits on a light card (the mark is designed for light backdrops),
   // shrink-wrapped and centered above the settings content.
   brandHeader: {

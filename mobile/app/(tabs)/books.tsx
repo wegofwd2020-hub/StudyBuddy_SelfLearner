@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteBook, loadBook, loadBookIndex } from "@/storage/bookStore";
 import { BookCover } from "@/components/BookCover";
+import { HelpButton } from "@/components/HelpButton";
 import { useResponsive } from "@/hooks/useResponsive";
 import { MAX_WIDE_WIDTH } from "@/constants/layout";
 import { colors, radius, spacing, typography } from "@/constants/theme";
@@ -37,6 +38,7 @@ function BooksHeader({ onNew, onImport }: { onNew: () => void; onImport: () => v
     <View style={styles.header}>
       <NewBookButton onPress={onNew} />
       <ImportButton onPress={onImport} />
+      <HelpButton topic="formats" label="Books & formats" />
     </View>
   );
 }

@@ -16,6 +16,7 @@ import { loadApiKey } from "@/secure/keyStore";
 import { loadLastLesson } from "@/storage/lessonStore";
 import { loadDefaultParams } from "@/storage/settingsStore";
 import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
+import { HelpButton } from "@/components/HelpButton";
 import { PageContainer } from "@/components/PageContainer";
 import { buildGenerateRequest } from "@/lib/buildGenerateRequest";
 import { colors, radius, spacing, typography } from "@/constants/theme";
@@ -99,6 +100,9 @@ export default function QueryScreen() {
       >
         <PageContainer>
         <View style={styles.hero} accessibilityRole="header">
+          <View style={styles.heroHelp}>
+            <HelpButton topic="scoped-queries" label="How Mentible works" />
+          </View>
           <View style={styles.logoCard}>
             <Image
               source={require("../../assets/brand/mentible-lockup-redorange-white.png")}
@@ -206,6 +210,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
   },
+  heroHelp: { position: "absolute", top: 0, right: 0, zIndex: 1 },
   // The logo is dark-on-transparent (made for light backgrounds), so sit it on
   // a light rounded card to stay legible on the dark UI. alignSelf:center keeps
   // the card shrink-wrapped to the logo rather than stretching full-width.
