@@ -16,15 +16,20 @@ export interface EpubMeta {
   title: string;
   sizeBytes: number;
   compiledAt: string; // ISO
-  coverUri?: string; // displayable cover image: file:// path (native) or data: URL (web)
+  coverUri?: string; // displayable raster cover: file:// path (native) or data: URL (web)
+  coverSvg?: string; // inline vector cover (e.g. extracted from an imported EPUB)
 }
 
 export interface SaveEpubInput {
   bookId: string;
   title: string;
   bytes: ArrayBuffer;
-  coverBytes?: ArrayBuffer; // optional PNG cover thumbnail (from /export?format=cover)
+  coverBytes?: ArrayBuffer; // optional raster cover thumbnail (from /export?format=cover)
+  coverSvg?: string; // optional vector cover (extracted from the EPUB on import)
 }
+
+// Don't inline a huge SVG into the (single-blob) index — guard against pathological covers.
+const MAX_INLINE_SVG = 600 * 1024;
 
 const isWeb = Platform.OS === "web";
 
@@ -105,7 +110,8 @@ interface WebRecord extends EpubMeta {
   blob: Blob;
 }
 
-async function webSave({ bookId, title, bytes, coverBytes }: SaveEpubInput): Promise<EpubMeta> {
+async function webSave({ bookId, title, bytes, coverBytes, coverSvg }: SaveEpubInput): Promise<EpubMeta> {
+  const inlineSvg = coverSvg && coverSvg.length <= MAX_INLINE_SVG ? coverSvg : undefined;
   const meta: EpubMeta = {
     id: bookId,
     title,
@@ -116,6 +122,7 @@ async function webSave({ bookId, title, bytes, coverBytes }: SaveEpubInput): Pro
     ...(coverBytes && coverBytes.byteLength > 0
       ? { coverUri: `data:image/png;base64,${toBase64(coverBytes)}` }
       : {}),
+    ...(inlineSvg ? { coverSvg: inlineSvg } : {}),
   };
   const blob = new Blob([bytes], { type: "application/epub+zip" });
   await tx("readwrite", (s) => s.put({ ...meta, blob } satisfies WebRecord));
@@ -190,7 +197,7 @@ function toBase64(buf: ArrayBuffer): string {
   return out;
 }
 
-async function nativeSave({ bookId, title, bytes, coverBytes }: SaveEpubInput): Promise<EpubMeta> {
+async function nativeSave({ bookId, title, bytes, coverBytes, coverSvg }: SaveEpubInput): Promise<EpubMeta> {
   await ensureDir(epubDir());
   await FileSystem.writeAsStringAsync(epubPath(bookId), toBase64(bytes), {
     encoding: FileSystem.EncodingType.Base64,
@@ -203,12 +210,14 @@ async function nativeSave({ bookId, title, bytes, coverBytes }: SaveEpubInput): 
     });
     coverUri = coverPath(bookId);
   }
+  const inlineSvg = coverSvg && coverSvg.length <= MAX_INLINE_SVG ? coverSvg : undefined;
   const meta: EpubMeta = {
     id: bookId,
     title,
     sizeBytes: bytes.byteLength,
     compiledAt: new Date().toISOString(),
     ...(coverUri ? { coverUri } : {}),
+    ...(inlineSvg ? { coverSvg: inlineSvg } : {}),
   };
   const index = (await readIndex()).filter((m) => m.id !== bookId);
   await writeIndex([meta, ...index]);
