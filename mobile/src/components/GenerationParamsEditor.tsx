@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
 import { LevelPicker } from "@/components/LevelPicker";
 import { DEPTHS } from "@/constants/depths";
 import { REGISTERS } from "@/constants/registers";
@@ -22,6 +23,7 @@ export function GenerationParamsEditor({
   pagesLabel?: string;
   pagesHint?: string;
 }) {
+  const router = useRouter();
   const set = (patch: Partial<GenerationParams>) => onChange({ ...value, ...patch });
   const adjustPages = (delta: number) =>
     set({ pages: Math.min(999, Math.max(0, value.pages + delta)) });
@@ -29,9 +31,11 @@ export function GenerationParamsEditor({
   return (
     <View style={styles.root}>
       <Text style={styles.label}>Level</Text>
+      <Text style={styles.paramHint}>Who it&apos;s written for — sets the reading level and assumed background.</Text>
       <LevelPicker value={value.level} onChange={(level) => set({ level })} />
 
       <Text style={styles.label}>Depth</Text>
+      <Text style={styles.paramHint}>How thorough — how many sections and how much detail.</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         {DEPTHS.map((d) => {
           const selected = d.value === value.depth;
@@ -52,6 +56,7 @@ export function GenerationParamsEditor({
       </ScrollView>
 
       <Text style={styles.label}>Diagrams</Text>
+      <Text style={styles.paramHint}>What kind of visuals the model favours (conceptual ↔ technical).</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         {REGISTERS.map((r) => {
           const selected = r.value === value.diagramRegister;
@@ -70,6 +75,14 @@ export function GenerationParamsEditor({
           );
         })}
       </ScrollView>
+      <Pressable
+        onPress={() => router.push("/diagram-types")}
+        accessibilityRole="button"
+        accessibilityLabel="See diagram examples"
+        hitSlop={8}
+      >
+        <Text style={styles.examplesLink}>See examples →</Text>
+      </Pressable>
 
       <Text style={styles.label}>{pagesLabel}</Text>
       <View style={styles.pagesRow}>
@@ -174,4 +187,11 @@ const styles = StyleSheet.create({
   },
   stepBtnText: { color: colors.primary, fontSize: typography.sizeMd, fontWeight: "700" },
   hint: { color: colors.textMuted, fontSize: typography.sizeXs },
+  paramHint: { color: colors.textMuted, fontSize: typography.sizeXs, marginTop: -2, marginBottom: 2 },
+  examplesLink: {
+    color: colors.primary,
+    fontSize: typography.sizeXs,
+    fontWeight: "700",
+    marginTop: spacing.xs,
+  },
 });
