@@ -109,23 +109,28 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
   },
   logoBtn: {
-    width: 48,
+    width: 64,
     height: 64,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     justifyContent: "center",
     alignItems: "center",
     marginRight: spacing.xs,
   },
   logo: { width: 40, height: 40 },
-  // Square tiles (icon over label).
+  // Square tiles (icon over label) with a clear, rounded border.
   tile: {
     width: 64,
     height: 64,
     borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     justifyContent: "center",
     alignItems: "center",
     gap: 3,
   },
-  tileActive: { backgroundColor: colors.primary + "22" },
+  tileActive: { backgroundColor: colors.primary + "22", borderColor: colors.primary },
   tileLabel: {
     fontSize: typography.sizeXs,
     fontWeight: "600",
