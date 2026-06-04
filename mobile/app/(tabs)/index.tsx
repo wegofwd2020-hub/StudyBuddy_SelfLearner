@@ -16,6 +16,7 @@ import { loadApiKey } from "@/secure/keyStore";
 import { loadLastLesson } from "@/storage/lessonStore";
 import { loadDefaultParams } from "@/storage/settingsStore";
 import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
+import { PageContainer } from "@/components/PageContainer";
 import { buildGenerateRequest } from "@/lib/buildGenerateRequest";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
@@ -93,9 +94,10 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.container}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        <PageContainer>
         <View style={styles.hero} accessibilityRole="header">
           <View style={styles.logoCard}>
             <Image
@@ -181,6 +183,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         )}
+        </PageContainer>
       </ScrollView>
     </SafeAreaView>
   );
@@ -195,9 +198,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  container: {
-    padding: spacing.md,
-    gap: spacing.md,
+  scrollContent: {
+    flexGrow: 1,
   },
   hero: {
     alignItems: "center",

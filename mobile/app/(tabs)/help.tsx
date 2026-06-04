@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { PageContainer } from "@/components/PageContainer";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
 // Help / getting-started screen. Scaffolded content — refine copy as the product
@@ -8,7 +9,8 @@ import { colors, radius, spacing, typography } from "@/constants/theme";
 export default function HelpScreen() {
   const router = useRouter();
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <PageContainer>
       <Text style={styles.title}>Help</Text>
 
       <Section title="Getting started">
@@ -49,6 +51,7 @@ export default function HelpScreen() {
           EPUB/PDF books with a branded cover, figures, tables and a glossary.
         </Text>
       </Section>
+      </PageContainer>
     </ScrollView>
   );
 }
@@ -75,7 +78,7 @@ function Step({ n, text }: { n: number; text: string }) {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.md, gap: spacing.md },
+  scrollContent: { flexGrow: 1 },
   title: {
     fontSize: typography.sizeXl,
     fontWeight: "800",

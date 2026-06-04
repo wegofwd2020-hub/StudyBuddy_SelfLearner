@@ -1,12 +1,14 @@
 import React from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/constants/brand";
+import { PageContainer } from "@/components/PageContainer";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
 // About screen — brand blurb + app facts. Scaffolded content; refine as needed.
 export default function AboutScreen() {
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <PageContainer>
       <View style={styles.brandHeader}>
         <View style={styles.brandCard}>
           <Image
@@ -48,6 +50,7 @@ export default function AboutScreen() {
       <Text style={styles.footnote}>
         Brand name provisional, pending trademark clearance.
       </Text>
+      </PageContainer>
     </ScrollView>
   );
 }
@@ -63,7 +66,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.md, gap: spacing.md },
+  scrollContent: { flexGrow: 1 },
   brandHeader: { alignItems: "center", paddingTop: spacing.sm },
   brandCard: {
     alignSelf: "center",

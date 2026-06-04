@@ -20,6 +20,7 @@ import { useRouter } from "expo-router";
 import { BRAND_NAME } from "@/constants/brand";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
+import { PageContainer } from "@/components/PageContainer";
 import { loadDefaultParams, saveDefaultParams } from "@/storage/settingsStore";
 import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
 
@@ -83,9 +84,10 @@ export default function SettingsScreen() {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
+      <PageContainer>
       <View style={styles.brandHeader}>
         <View style={styles.brandCard}>
           <Image
@@ -182,6 +184,7 @@ export default function SettingsScreen() {
         <Text style={styles.protoText}>🎨 UI concept gallery</Text>
         <Text style={styles.protoChevron}>→</Text>
       </Pressable>
+      </PageContainer>
     </ScrollView>
   );
 }
@@ -200,9 +203,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  container: {
-    padding: spacing.md,
-    gap: spacing.md,
+  scrollContent: {
+    flexGrow: 1,
   },
   // Brand lockup sits on a light card (the mark is designed for light backdrops),
   // shrink-wrapped and centered above the settings content.
