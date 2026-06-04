@@ -78,6 +78,32 @@ export async function downloadArtifact(
   return { savedPath: path };
 }
 
+// Deliver a text artifact (e.g. a book's .book.json) to the user: a browser
+// download on web; a UTF-8 file on native (returns the path). Text-native path
+// avoids a base64 round-trip and any TextEncoder dependency on Hermes.
+export async function downloadTextArtifact(
+  text: string,
+  filename: string,
+  mimeType: string,
+): Promise<{ savedPath?: string }> {
+  if (isWeb) {
+    const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return {};
+  }
+  const path = `${FileSystem.documentDirectory}${filename}`;
+  await FileSystem.writeAsStringAsync(path, text, {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
+  return { savedPath: path };
+}
+
 // ── web: IndexedDB ────────────────────────────────────────────────────────────
 const DB_NAME = "sbq";
 const STORE = "epubs";
