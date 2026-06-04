@@ -14,6 +14,8 @@ import { useStructureJob } from "@/hooks/useStructureJob";
 import { loadApiKey } from "@/secure/keyStore";
 import { ensureTopicIds } from "@/storage/bookStore";
 import { pickTocFileContents } from "@/storage/pickBookFile";
+import { downloadTextArtifact } from "@/storage/epubLibrary";
+import { BOOK_OUTLINE_TEMPLATE } from "@/constants/bookOutlineTemplate";
 import { randomUUID } from "@/lib/uuid";
 import { BookEditor } from "@/components/BookEditor";
 import { PageContainer } from "@/components/PageContainer";
@@ -47,6 +49,7 @@ export default function NewBookScreen() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+  const [templateMsg, setTemplateMsg] = useState<string | null>(null);
 
   const { status, toc, error, elapsed } = useStructureJob(
     phase === "submitted" ? jobId : null,
@@ -95,6 +98,22 @@ export default function NewBookScreen() {
       setErrorMsg(err instanceof Error ? err.message : "Could not read that file.");
     } finally {
       setPicking(false);
+    }
+  }, []);
+
+  // Hand the user a blank outline to fill out offline and re-upload via the
+  // "Load from a Markdown file" button above.
+  const handleDownloadTemplate = useCallback(async () => {
+    setErrorMsg(null);
+    try {
+      const res = await downloadTextArtifact(
+        BOOK_OUTLINE_TEMPLATE,
+        "book-outline-template.md",
+        "text/markdown",
+      );
+      setTemplateMsg(res.savedPath ? `Saved: ${res.savedPath}` : "Template downloaded.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Could not download the template.");
     }
   }, []);
 
@@ -192,6 +211,16 @@ export default function NewBookScreen() {
         )}
       </Pressable>
 
+      <Pressable
+        onPress={handleDownloadTemplate}
+        accessibilityRole="button"
+        accessibilityLabel="Download a blank Markdown outline template"
+        hitSlop={8}
+      >
+        <Text style={styles.templateLink}>↓ Download a blank template (.md)</Text>
+      </Pressable>
+      {templateMsg && <Text style={styles.templateMsg}>✓ {templateMsg}</Text>}
+
       <TextInput
         style={[styles.tocInput, isDesktop && styles.tocInputDesktop]}
         value={rawToc}
@@ -256,6 +285,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   loadBtnText: { color: colors.primary, fontSize: typography.sizeMd, fontWeight: "700" },
+  templateLink: {
+    color: colors.textSecondary,
+    fontSize: typography.sizeSm,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: spacing.xs,
+  },
+  templateMsg: { color: colors.success, fontSize: typography.sizeXs, textAlign: "center" },
   titleInput: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
