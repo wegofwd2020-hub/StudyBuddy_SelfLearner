@@ -1,6 +1,6 @@
 import React from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
-import { BRAND_NAME, BRAND_TAGLINE } from "@/constants/brand";
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BRAND_AUTHOR, BRAND_CONTACT, BRAND_NAME, BRAND_TAGLINE } from "@/constants/brand";
 import { PageContainer } from "@/components/PageContainer";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
@@ -33,6 +33,22 @@ export default function AboutScreen() {
           <Row label="Tagline" value={BRAND_TAGLINE} />
           <Row label="Version" value="0.1.0 (MVP)" />
           <Row label="Default model" value="claude-sonnet-4-6" />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Author</Text>
+        <View style={styles.card}>
+          <Row label="Author" value={BRAND_AUTHOR} />
+          <Pressable
+            style={styles.row}
+            onPress={() => Linking.openURL(`mailto:${BRAND_CONTACT}`)}
+            accessibilityRole="link"
+            accessibilityLabel={`Email ${BRAND_CONTACT}`}
+          >
+            <Text style={styles.rowLabel}>Contact</Text>
+            <Text style={styles.contactValue}>{BRAND_CONTACT}</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -102,6 +118,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   rowLabel: { fontSize: typography.sizeSm, color: colors.textMuted },
   rowValue: { fontSize: typography.sizeSm, color: colors.text, fontWeight: "600" },
+  contactValue: { fontSize: typography.sizeSm, color: colors.primary, fontWeight: "600" },
   footnote: {
     fontSize: typography.sizeXs,
     color: colors.textMuted,
