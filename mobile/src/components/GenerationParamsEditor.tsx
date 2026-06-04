@@ -31,9 +31,11 @@ export function GenerationParamsEditor({
   return (
     <View style={styles.root}>
       <Text style={styles.label}>Level</Text>
+      <Text style={styles.paramHint}>Who it&apos;s written for — sets the reading level and assumed background.</Text>
       <LevelPicker value={value.level} onChange={(level) => set({ level })} />
 
       <Text style={styles.label}>Depth</Text>
+      <Text style={styles.paramHint}>How thorough — how many sections and how much detail.</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         {DEPTHS.map((d) => {
           const selected = d.value === value.depth;
@@ -54,6 +56,7 @@ export function GenerationParamsEditor({
       </ScrollView>
 
       <Text style={styles.label}>Diagrams</Text>
+      <Text style={styles.paramHint}>What kind of visuals the model favours (conceptual ↔ technical).</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         {REGISTERS.map((r) => {
           const selected = r.value === value.diagramRegister;
@@ -184,6 +187,7 @@ const styles = StyleSheet.create({
   },
   stepBtnText: { color: colors.primary, fontSize: typography.sizeMd, fontWeight: "700" },
   hint: { color: colors.textMuted, fontSize: typography.sizeXs },
+  paramHint: { color: colors.textMuted, fontSize: typography.sizeXs, marginTop: -2, marginBottom: 2 },
   examplesLink: {
     color: colors.primary,
     fontSize: typography.sizeXs,
