@@ -1,85 +1,94 @@
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { PageContainer } from "@/components/PageContainer";
+import { searchHelpTopics, type HelpBlock } from "@/constants/helpContent";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
-// Help / getting-started screen. Scaffolded content — refine copy as the product
-// firms up. Reachable from the top nav (Help tile).
+// Help screen — renders the structured, searchable help content (issue #60).
+// Topics live in constants/helpContent.ts so they stay maintainable + indexable.
 export default function HelpScreen() {
   const router = useRouter();
+  const [query, setQuery] = useState("");
+  const topics = useMemo(() => searchHelpTopics(query), [query]);
+
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+    >
       <PageContainer>
-      <Text style={styles.title}>Help</Text>
+        <Text style={styles.title}>Help</Text>
+        <TextInput
+          style={styles.search}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search help…"
+          placeholderTextColor={colors.textMuted}
+          returnKeyType="search"
+          autoCorrect={false}
+          accessibilityLabel="Search help"
+        />
 
-      <Section title="Getting started">
-        <Step n={1} text="Add your Anthropic API key in Settings (stored only on your device)." />
-        <Step n={2} text="On Query, describe what you want to learn and set the scope." />
-        <Step n={3} text="Generate — your lesson is rendered with math, diagrams and tables." />
-        <Step n={4} text="Save lessons to your Library, or open compiled books under Books." />
-      </Section>
-
-      <Section title="Your Anthropic key (BYOK)">
-        <Text style={styles.body}>
-          Mentible is bring-your-own-key: you pay Anthropic directly. Your key is
-          kept in the device keystore and sent per request to generate content —
-          it is never logged or stored on a server.
-        </Text>
-        <Pressable
-          style={styles.linkBtn}
-          onPress={() => router.push("/settings")}
-          accessibilityRole="button"
-          accessibilityLabel="Open Settings to add your key"
-        >
-          <Text style={styles.linkBtnText}>Open Settings →</Text>
-        </Pressable>
-      </Section>
-
-      <Section title="How scoped queries work">
-        <Text style={styles.body}>
-          Mentible isn&apos;t a chatbot. Every generation is a scoped query tuned
-          by a few dimensions — level, depth, length and diagram register — so you
-          get a real lesson, not a chat reply. Adjust the scope to change the
-          reading level, how deep it goes, and the kind of diagrams it produces.
-        </Text>
-      </Section>
-
-      <Section title="Diagram types">
-        <Text style={styles.body}>
-          The Diagrams setting controls what kind of visuals you get — from
-          big-idea infographics to precise technical diagrams. Browse examples to
-          pick the direction that fits your audience.
-        </Text>
-        <Pressable
-          style={styles.linkBtn}
-          onPress={() => router.push("/diagram-types")}
-          accessibilityRole="button"
-          accessibilityLabel="Browse diagram types"
-        >
-          <Text style={styles.linkBtnText}>Browse diagram types →</Text>
-        </Pressable>
-      </Section>
-
-      <Section title="Formats">
-        <Text style={styles.body}>
-          At launch, generations are lessons. Saved content can be compiled into
-          EPUB/PDF books with a branded cover, figures, tables and a glossary.
-        </Text>
-      </Section>
+        {topics.length === 0 ? (
+          <Text style={styles.empty}>No help topics match “{query.trim()}”.</Text>
+        ) : (
+          topics.map((t) => (
+            <View key={t.id} style={styles.section}>
+              <Text style={styles.sectionLabel}>{t.title}</Text>
+              <View style={styles.card}>
+                {t.blocks.map((b, i) => (
+                  <Block key={i} block={b} onLink={(href) => router.push(href)} />
+                ))}
+              </View>
+            </View>
+          ))
+        )}
       </PageContainer>
     </ScrollView>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionLabel}>{title}</Text>
-      <View style={styles.card}>{children}</View>
-    </View>
-  );
+function Block({ block, onLink }: { block: HelpBlock; onLink: (href: HelpBlockHref) => void }) {
+  switch (block.kind) {
+    case "text":
+      return <Text style={styles.body}>{block.text}</Text>;
+    case "steps":
+      return (
+        <>
+          {block.steps.map((s, i) => (
+            <Step key={i} n={i + 1} text={s} />
+          ))}
+        </>
+      );
+    case "link":
+      return (
+        <Pressable
+          style={styles.linkBtn}
+          onPress={() => onLink(block.href)}
+          accessibilityRole="button"
+          accessibilityLabel={block.label}
+        >
+          <Text style={styles.linkBtnText}>{block.label}</Text>
+        </Pressable>
+      );
+    case "defs":
+      return (
+        <>
+          {block.defs.map((d, i) => (
+            <View key={i} style={styles.def}>
+              <Text style={styles.defTerm}>{d.term}</Text>
+              <Text style={styles.defText}>{d.def}</Text>
+            </View>
+          ))}
+        </>
+      );
+  }
 }
+
+// The href type a link block carries (narrowed from HelpBlock).
+type HelpBlockHref = Extract<HelpBlock, { kind: "link" }>["href"];
 
 function Step({ n, text }: { n: number; text: string }) {
   return (
@@ -101,6 +110,17 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.xs,
   },
+  search: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: colors.text,
+    fontSize: typography.sizeMd,
+  },
+  empty: { color: colors.textMuted, fontSize: typography.sizeSm, paddingVertical: spacing.md },
   section: { gap: spacing.xs },
   sectionLabel: {
     fontSize: typography.sizeXs,
@@ -131,4 +151,7 @@ const styles = StyleSheet.create({
   stepText: { flex: 1, fontSize: typography.sizeSm, color: colors.text, lineHeight: 21 },
   linkBtn: { alignSelf: "flex-start" },
   linkBtnText: { color: colors.primary, fontWeight: "700", fontSize: typography.sizeSm },
+  def: { gap: 2 },
+  defTerm: { fontSize: typography.sizeSm, fontWeight: "700", color: colors.text },
+  defText: { fontSize: typography.sizeSm, color: colors.textSecondary, lineHeight: 20 },
 });
