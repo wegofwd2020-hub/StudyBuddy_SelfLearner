@@ -22,7 +22,7 @@ import { colors, radius, spacing, typography } from "@/constants/theme";
 import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
 import type { StoredLesson } from "@/storage/lessonStore";
 
-export default function HomeScreen() {
+export default function QueryScreen() {
   const router = useRouter();
   const [topic, setTopic] = useState("");
   const [params, setParams] = useState<GenerationParams>(DEFAULT_GENERATION_PARAMS);

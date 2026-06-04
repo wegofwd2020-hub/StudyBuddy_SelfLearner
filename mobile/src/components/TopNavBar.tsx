@@ -7,19 +7,20 @@ import { colors, radius, spacing, typography } from "@/constants/theme";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-// route name → label + active/inactive icon. `index` is the Query screen.
+// route name → label + active/inactive icon. The app launches on Library;
+// `index` is a redirect-to-Library route (not shown), Query has its own route.
 const TABS: Record<string, { label: string; active: IconName; inactive: IconName }> = {
   library: { label: "Library", active: "bookmarks", inactive: "bookmarks-outline" },
-  index: { label: "Query", active: "sparkles", inactive: "sparkles-outline" },
+  query: { label: "Query", active: "sparkles", inactive: "sparkles-outline" },
   books: { label: "Books", active: "book", inactive: "book-outline" },
   settings: { label: "Settings", active: "settings", inactive: "settings-outline" },
   help: { label: "Help", active: "help-circle", inactive: "help-circle-outline" },
   about: { label: "About", active: "information-circle", inactive: "information-circle-outline" },
 };
 
-// Visual left→right order of the menu (the redesigned sequence). Query sits 2nd,
-// after Library; the brand logo is rendered before this row and links to Query.
-const ORDER = ["library", "index", "books", "settings", "help", "about"];
+// Visual left→right order of the menu. Library is first (and the landing); the
+// brand logo is rendered before this row and links to Library (home).
+const ORDER = ["library", "query", "books", "settings", "help", "about"];
 
 // Top, center-aligned navigation bar with square icon+label tiles and a leading
 // Mentible mark that jumps to Query. Replaces the default bottom tab bar (passed
@@ -49,9 +50,9 @@ export function TopNavBar({ state, navigation }: BottomTabBarProps) {
         contentContainerStyle={styles.row}
       >
         <Pressable
-          onPress={() => go("index")}
+          onPress={() => go("library")}
           accessibilityRole="button"
-          accessibilityLabel="Mentible — go to Query"
+          accessibilityLabel="Mentible — go to Library (home)"
           style={styles.logoBtn}
         >
           <Image
