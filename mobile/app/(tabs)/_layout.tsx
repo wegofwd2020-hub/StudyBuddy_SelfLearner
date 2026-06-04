@@ -1,71 +1,22 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { TopNavBar } from "@/components/TopNavBar";
 
-type IconName = keyof typeof Ionicons.glyphMap;
-
-// A tab icon that fills in when the tab is active and is outlined otherwise.
-function tabIcon(active: IconName, inactive: IconName) {
-  return function TabBarIcon({
-    color,
-    size,
-    focused,
-  }: {
-    color: string;
-    size: number;
-    focused: boolean;
-  }) {
-    return <Ionicons name={focused ? active : inactive} size={size} color={color} />;
-  };
-}
-
+// Navigation is a custom TOP, center-aligned bar (TopNavBar) with square
+// icon+label tiles and a leading Mentible mark. Headers are hidden — the active
+// nav tile indicates the current screen. Declaration order here doesn't drive
+// the visual order; TopNavBar renders an explicit sequence.
 export default function TabLayout() {
   return (
     <Tabs
-      screenOptions={{
-        tabBarStyle: {
-          backgroundColor: "#1e293b",
-          borderTopColor: "#334155",
-        },
-        tabBarActiveTintColor: "#6366f1",
-        tabBarInactiveTintColor: "#64748b",
-        headerStyle: { backgroundColor: "#0f172a" },
-        headerTintColor: "#f1f5f9",
-        headerTitleStyle: { fontWeight: "700" },
-      }}
+      tabBar={(props) => <TopNavBar {...props} />}
+      screenOptions={{ headerShown: false, tabBarPosition: "top" }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          // Header hidden: the home screen renders its own branded hero.
-          headerShown: false,
-          tabBarLabel: "Query",
-          tabBarIcon: tabIcon("sparkles", "sparkles-outline"),
-        }}
-      />
-      <Tabs.Screen
-        name="library"
-        options={{
-          title: "Library",
-          tabBarLabel: "Library",
-          tabBarIcon: tabIcon("bookmarks", "bookmarks-outline"),
-        }}
-      />
-      <Tabs.Screen
-        name="books"
-        options={{
-          title: "Books",
-          tabBarLabel: "Books",
-          tabBarIcon: tabIcon("book", "book-outline"),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarLabel: "Settings",
-          tabBarIcon: tabIcon("settings", "settings-outline"),
-        }}
-      />
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="library" />
+      <Tabs.Screen name="books" />
+      <Tabs.Screen name="settings" />
+      <Tabs.Screen name="help" />
+      <Tabs.Screen name="about" />
     </Tabs>
   );
 }
