@@ -45,3 +45,18 @@ Checked the compiled **v1.0** artifact (`artifacts/product-sense-and-ai.{pdf,epu
 - Page size/count: `pdfinfo` + per-page text map of `artifacts/product-sense-and-ai.pdf`.
 - Figures (15) / Tables (9): the artifact's List of Figures (p4) and List of Tables (p5).
 - Chapters, sections, word counts, takeaways: parsed from `artifacts/product-sense-and-ai.book.json`.
+
+---
+
+## v2.0 update (gaps resolved)
+
+v2.0 is now the production artifact (v1.0 backed up as `…-v1.0.*`). It addresses the two gaps + the minor note:
+
+| Item | v1.0 | v2.0 | Status |
+|---|---|---|---|
+| **A2** Page count | 45 content pp | **50 content pp** (58 total) — per-chapter Examples + editorial spacing | ✅ meets ~50 target |
+| **B4** Concept→Visual→**Example**→Key Takeaways | examples woven into prose | **15/15 chapters** gain a discrete "In practice" Example (new named enterprise scenarios) | ✅ |
+| **B5** First-use definitions | glossary only | first-use acronym expansions added in-prose (+ glossary intact) | ✅ |
+| **C-series** design | passing | also tuned toward Anthropic-minimal — warm ground, more air, softer accents (see [design-style doc](product-sense-ai_design-style.md), PR #64) | ✅ enhanced |
+
+All 15 bespoke SVG figures preserved. v2.0 is stamped `version 2.0 · Second Edition` (ADR-008). The content additions were generated via the LLM pipeline and grafted onto the existing prose; the design tuning is compiler-side.
