@@ -130,6 +130,7 @@ def _diagram_guidelines(diagram_register: str) -> str:
     block = _DIAGRAM_REGISTERS.get(diagram_register, _DIAGRAM_REGISTERS["balanced"])
     return f"{block}\n\n{_DIAGRAM_ROLE_CONTRACT}"
 
+
 # Prose-quality directive — sharpen clarity WITHOUT sacrificing coverage. Avoids
 # the literals asserted against in tests ("page(s)", "2 short sections").
 _PROSE_QUALITY = """\
