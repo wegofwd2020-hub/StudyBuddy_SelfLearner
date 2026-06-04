@@ -1,23 +1,25 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { SvgXml } from "react-native-svg";
 import { typography } from "@/constants/theme";
 
-// In-app book cover. When the library entry has a real cover thumbnail
-// (coverUri — the compiled artifact's actual cover, see compiler/src/cover.ts),
-// it's shown directly. Otherwise we fall back to a brand-aligned placeholder: a
-// deep-indigo upper field with a green growth mark over a light lower band
-// carrying the title in serif (for authored books without a compiled cover yet).
+// In-app book cover. Renders the real cover when available — a raster thumbnail
+// (coverUri, e.g. a compiled artifact's cover) or a vector cover (coverSvg, e.g.
+// extracted from an imported EPUB). Otherwise falls back to a brand-aligned
+// placeholder: a deep-indigo field with a green growth mark over a light band.
 export function BookCover({
   title,
   badge,
   size = "thumb",
   coverUri,
+  coverSvg,
 }: {
   title: string;
   badge?: string; // small label, e.g. "EPUB3" or "12/16"
   size?: "thumb" | "large";
-  coverUri?: string; // real cover image (file:// path or data: URL)
+  coverUri?: string; // raster cover (file:// path or data: URL)
+  coverSvg?: string; // vector cover markup
 }) {
   const large = size === "large";
   const badgeEl = badge ? (
@@ -26,13 +28,17 @@ export function BookCover({
     </View>
   ) : null;
 
-  if (coverUri) {
+  if (coverUri || coverSvg) {
     return (
       <View
         style={[styles.cover, large ? styles.large : styles.thumb]}
         accessibilityLabel={`Cover: ${title}`}
       >
-        <Image source={{ uri: coverUri }} style={styles.image} resizeMode="cover" />
+        {coverUri ? (
+          <Image source={{ uri: coverUri }} style={styles.image} resizeMode="cover" />
+        ) : (
+          <SvgXml xml={coverSvg as string} width="100%" height="100%" preserveAspectRatio="xMidYMid slice" />
+        )}
         {badgeEl}
       </View>
     );

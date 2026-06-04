@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteEpub, listEpubs, openEpub, saveEpub, type EpubMeta } from "@/storage/epubLibrary";
 import { pickEpubFile } from "@/storage/pickBookFile";
+import { extractEpubCover } from "@/storage/epubCover";
 import { BookCover } from "@/components/BookCover";
 import { useResponsive } from "@/hooks/useResponsive";
 import { MAX_WIDE_WIDTH } from "@/constants/layout";
@@ -57,7 +58,14 @@ export default function LibraryScreen() {
       const title = picked.name.replace(/\.epub$/i, "").trim() || "Imported book";
       const slug =
         title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "epub";
-      await saveEpub({ bookId: `imported-${slug}`, title, bytes: picked.bytes });
+      const cover = extractEpubCover(picked.bytes); // pull the real cover out of the EPUB
+      await saveEpub({
+        bookId: `imported-${slug}`,
+        title,
+        bytes: picked.bytes,
+        coverSvg: cover?.svg,
+        coverBytes: cover?.raster,
+      });
       reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't import that file.");
@@ -139,7 +147,7 @@ export default function LibraryScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Open book: ${item.title}`}
           >
-            <BookCover title={item.title} badge="EPUB3" coverUri={item.coverUri} />
+            <BookCover title={item.title} badge="EPUB3" coverUri={item.coverUri} coverSvg={item.coverSvg} />
           </Pressable>
           <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
           <View style={styles.tileFooter}>
