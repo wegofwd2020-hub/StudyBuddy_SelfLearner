@@ -228,3 +228,67 @@ async def test_unsupported_format_marks_failed(client, fake_redis, known_test_ap
     body = await _wait_for_status(client, job_id, "failed")
 
     assert "not yet supported" in body["error"]
+
+
+# ── Multi-provider (Phase 2b) ─────────────────────────────────────────────────
+
+_FAKE_OPENAI_KEY = "sk-TEST_FAKE_OPENAI_KEY_xxxxxxxxxxxxxxxxxxxxxxxx"
+
+
+def _openai_provider_returning(content: str):
+    """A real OpenAICompatibleProvider backed by a MockTransport (no network) that
+    returns `content` as the chat-completion. Used to drive the worker's OpenAI
+    path deterministically."""
+    import httpx
+
+    from pipeline.providers.contract import Capabilities
+    from pipeline.providers.openai_compatible import OpenAICompatibleProvider
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": content}}],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 500},
+            },
+        )
+
+    return OpenAICompatibleProvider(
+        api_key=_FAKE_OPENAI_KEY,
+        base_url="https://api.openai.com/v1",
+        model="gpt-4o-mini",
+        capabilities=Capabilities(json_object=True),
+        client=httpx.Client(transport=httpx.MockTransport(_handler)),
+    )
+
+
+@pytest.mark.asyncio
+async def test_openai_provider_path_done(client, fake_redis):
+    """A request with provider_id=openai + an sk- key generates through the
+    OpenAI-compatible provider and the same validate→repair loop."""
+    provider = _openai_provider_returning(_FAKE_LESSON_JSON)
+    with patch("backend.src.generate.tasks.build_provider", return_value=provider):
+        body = _request_body(_FAKE_OPENAI_KEY, provider_id="openai")
+        submit = await client.post("/api/v1/generate", json=body)
+        assert submit.status_code == 202
+        job_id = submit.json()["job_id"]
+        result = await _wait_for_status(client, job_id, "done")
+
+    assert result["status"] == "done"
+    assert result["result"]["topic"] == "Quadratic formula"
+
+
+@pytest.mark.asyncio
+async def test_unknown_provider_rejected(client, known_test_api_key):
+    """An unknown provider_id is a 422 at the request boundary."""
+    body = _request_body(known_test_api_key, provider_id="not-a-provider")
+    submit = await client.post("/api/v1/generate", json=body)
+    assert submit.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_wrong_key_format_for_provider_rejected(client):
+    """Anthropic provider with a non-sk-ant- key is rejected (422)."""
+    body = _request_body(_FAKE_OPENAI_KEY, provider_id="anthropic")
+    submit = await client.post("/api/v1/generate", json=body)
+    assert submit.status_code == 422

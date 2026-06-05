@@ -37,6 +37,7 @@ from pipeline.providers.anthropic_adapter import AnthropicAdapter
 from pipeline.providers.conformance import generate_validated
 from pipeline.providers.contract import LLMRequest
 from pipeline.providers.errors import LLMError, LLMSchemaError
+from pipeline.providers.registry import build_provider
 
 log = get_logger("generate.tasks")
 
@@ -125,6 +126,7 @@ async def run_generation(
     prior_knowledge: str | None = None,
     framing: str | None = None,
     instructions: str | None = None,
+    provider_id: str = "anthropic",
     model: str | None = None,
     redis_client: redis.Redis,
 ) -> None:
@@ -195,7 +197,6 @@ async def run_generation(
     # raise an LLMError and fail fast — no outer retry. The api_key is used across
     # the loop then shredded in `finally` on every path, so the credential window
     # is the job's lifetime, not a single attempt.
-    chosen_model = model or settings.anthropic_default_model
     lesson: LessonOutput | None = None
     last_error = "generation failed"
 
@@ -206,8 +207,15 @@ async def run_generation(
         return LessonOutput.model_validate(parse_json_response(text))
 
     try:
-        provider = AnthropicAdapter(api_key=api_key, model=chosen_model)
-        req = LLMRequest(prompt=prompt, max_tokens=max_tokens)
+        # Anthropic stays on the legacy adapter (prompt-embedded JSON) for parity;
+        # tool-use is Phase 4. Other providers come from the registry factory
+        # (OpenAI-compatible, JSON via response_format). response_format="json" is
+        # a hint the OpenAI provider honours and the adapter ignores.
+        if provider_id == "anthropic":
+            provider = AnthropicAdapter(api_key=api_key, model=model or settings.anthropic_default_model)
+        else:
+            provider = build_provider(provider_id, api_key=api_key, model=model)
+        req = LLMRequest(prompt=prompt, max_tokens=max_tokens, response_format="json")
         # Sync loop in a thread so we don't block the event loop.
         result = await asyncio.to_thread(
             generate_validated, provider, req, _validate, max_repairs=_MAX_REPAIRS
@@ -222,6 +230,11 @@ async def run_generation(
         # Auth / rate-limit / timeout / transport — fail fast. Log type only.
         last_error = "generation failed"
         log.warning("generation_failed", job_id=str(job_id), reason="llm_error")
+    except Exception:
+        # Defense in depth: never let a raw exception escape the worker — it could
+        # reach the framework logger with key material. Log type only, no message.
+        last_error = "generation failed"
+        log.warning("generation_failed", job_id=str(job_id), reason="unexpected")
     finally:
         # SHRED: drop our key reference and the encrypted envelope as soon as
         # we're done with the user's credentials, on every path. (CPython str

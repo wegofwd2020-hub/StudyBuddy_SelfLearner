@@ -8,7 +8,9 @@ from __future__ import annotations
 import uuid
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from pipeline.providers.registry import PROVIDER_REGISTRY
 
 # Output formats for v1 (D13). MVP uses only "lesson" — others land in v1.1.
 OutputFormat = Literal["lesson", "explanation", "quiz"]
@@ -63,19 +65,34 @@ class GenerateRequest(BaseModel):
     # for the T-shape". Persisted per topic on the client and re-sent each time.
     instructions: str | None = Field(default=None, max_length=2000)
 
-    # BYOK key — sk-ant-... . Validated on length only; format checking
-    # happens implicitly when Anthropic rejects malformed keys.
+    # BYOK key — its prefix is validated per provider (see _api_key_matches_provider).
     api_key: str = Field(min_length=20, max_length=512)
 
-    # Optional model override — defaults to settings.anthropic_default_model.
+    # Which LLM to generate with (BYOK). Defaults to Anthropic so existing
+    # clients are unaffected. Must be a known provider (see the registry).
+    provider_id: str = "anthropic"
+
+    # Optional model override — defaults to the provider's registry default
+    # (anthropic → settings.anthropic_default_model).
     model: str | None = None
 
-    @field_validator("api_key")
+    @field_validator("provider_id")
     @classmethod
-    def _api_key_shape(cls, v: str) -> str:
-        if not v.startswith("sk-ant-"):
-            raise ValueError("api_key must be an Anthropic API key (starts with sk-ant-)")
+    def _known_provider(cls, v: str) -> str:
+        if v not in PROVIDER_REGISTRY:
+            raise ValueError(f"unknown provider_id {v!r}")
         return v
+
+    @model_validator(mode="after")
+    def _api_key_matches_provider(self) -> "GenerateRequest":
+        # BYOK keys are scoped to their provider — never send the wrong format.
+        # Anthropic keys are sk-ant-; the OpenAI-compatible providers use sk-.
+        if self.provider_id == "anthropic":
+            if not self.api_key.startswith("sk-ant-"):
+                raise ValueError("Anthropic api_key must start with sk-ant-")
+        elif not self.api_key.startswith("sk-"):
+            raise ValueError(f"{self.provider_id} api_key must start with sk-")
+        return self
 
 
 class GenerateResponse(BaseModel):

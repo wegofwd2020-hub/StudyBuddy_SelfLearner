@@ -60,6 +60,16 @@ class TestRedactionProcessor:
         assert known_test_api_key not in json.dumps(out)
         assert "<redacted-anthropic-key>" in json.dumps(out)
 
+    def test_openai_key_value_pattern_matched(self, known_test_openai_key: str):
+        # The generic sk-… backstop must catch non-Anthropic provider keys too.
+        out = redact_keys(None, "info", {"event": "x", "raw": known_test_openai_key})
+        assert known_test_openai_key not in json.dumps(out)
+        assert "<redacted-provider-key>" in json.dumps(out)
+
+    def test_openai_key_embedded_in_message(self, known_test_openai_key: str):
+        out = redact_keys(None, "info", {"event": f"upstream rejected {known_test_openai_key} oops"})
+        assert known_test_openai_key not in json.dumps(out)
+
     def test_field_name_redacted(self, known_test_api_key: str):
         out = redact_keys(None, "info", {"event": "x", "api_key": known_test_api_key})
         assert known_test_api_key not in json.dumps(out)
@@ -233,4 +243,44 @@ async def test_worker_path_does_not_log_key(client, known_test_api_key, capsys):
     combined = buffer.getvalue() + captured.out + captured.err
     assert known_test_api_key not in combined, (
         f"BYOK key leaked into log output via worker error path: {combined[:500]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_worker_path_openai_provider_does_not_log_key(client, known_test_openai_key, capsys):
+    """The OpenAI (sk-) BYOK worker path must not leak the key either — even if a
+    provider were to raise an exception carrying the key. The worker's broad
+    except + the generic sk-… redaction are the two backstops (memo §2b)."""
+    import asyncio
+    import json as _json
+    from unittest.mock import MagicMock, patch
+
+    buffer, _ = _capture_log_output()
+
+    # A provider whose generate raises with the key in the message (worst case).
+    leaky = MagicMock()
+    leaky.generate.side_effect = RuntimeError(f"openai rejected key={known_test_openai_key}")
+
+    with patch("backend.src.generate.tasks.build_provider", return_value=leaky):
+        resp = await client.post(
+            "/api/v1/generate",
+            json={
+                "request_id": str(uuid.uuid4()),
+                "topic": "Anything",
+                "level": "student",
+                "language": "en",
+                "format": "lesson",
+                "provider_id": "openai",
+                "api_key": known_test_openai_key,
+            },
+        )
+        assert resp.status_code == 202
+        await asyncio.sleep(0.2)
+        status = await client.get(f"/api/v1/jobs/{resp.json()['job_id']}")
+        assert known_test_openai_key not in _json.dumps(status.json())
+
+    captured = capsys.readouterr()
+    combined = buffer.getvalue() + captured.out + captured.err
+    assert known_test_openai_key not in combined, (
+        f"OpenAI BYOK key leaked into log output: {combined[:500]}"
     )

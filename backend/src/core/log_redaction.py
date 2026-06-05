@@ -8,8 +8,12 @@ Two layers of defence:
    matches a sensitive-name pattern (api_key, anthropic_key, byok_key, etc.)
    has its value replaced with "<redacted>".
 
-2. **Value pattern redaction.** Any string value that contains a substring
-   matching `sk-ant-*` is replaced with "<redacted-anthropic-key>".
+2. **Value pattern redaction.** Any string value containing a substring that
+   looks like a provider API key is redacted: `sk-ant-*` (Anthropic) →
+   "<redacted-anthropic-key>", and any other `sk-*` token (OpenAI, DeepSeek,
+   Qwen, OpenRouter, …) → "<redacted-provider-key>". Multi-provider BYOK means
+   more than one key format flows, so the backstop is provider-agnostic
+   (ADR-005 + docs/multi-provider-wiring-phase2.md §2b).
 
 The CI gate `tests/test_no_key_in_logs.py` exercises every code path with a
 known test key and asserts no log line contains it — this module is the
@@ -34,6 +38,12 @@ import structlog
 # Match a generous trailing chunk so partial keys are also caught.
 _ANTHROPIC_KEY_RE = re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}")
 
+# Generic provider-key backstop: any other `sk-…` token (OpenAI `sk-`/`sk-proj-`,
+# DeepSeek/Qwen `sk-`, OpenRouter `sk-or-`, …). Applied AFTER the Anthropic regex
+# so sk-ant- keys keep their specific label. {16,} avoids matching bare "sk-"
+# mentions; over-redaction is the safe direction for a security backstop.
+_PROVIDER_KEY_RE = re.compile(r"sk-[A-Za-z0-9_\-]{16,}")
+
 # Keys whose VALUE should be redacted regardless of content. Lower-cased
 # field names; comparison is case-insensitive.
 _SENSITIVE_FIELD_NAMES: frozenset[str] = frozenset(
@@ -42,6 +52,9 @@ _SENSITIVE_FIELD_NAMES: frozenset[str] = frozenset(
         "apikey",
         "anthropic_key",
         "anthropic_api_key",
+        "openai_key",
+        "openai_api_key",
+        "provider_key",
         "byok_key",
         "byok",
         "x_api_key",
@@ -54,6 +67,7 @@ _SENSITIVE_FIELD_NAMES: frozenset[str] = frozenset(
 
 _REDACTED_VALUE = "<redacted>"
 _REDACTED_KEY_PATTERN = "<redacted-anthropic-key>"
+_REDACTED_PROVIDER_KEY = "<redacted-provider-key>"
 
 
 def _scrub_value(value: Any) -> Any:
@@ -66,7 +80,9 @@ def _scrub_value(value: Any) -> Any:
     that would create false-positive risk on long stringified objects).
     """
     if isinstance(value, str):
-        return _ANTHROPIC_KEY_RE.sub(_REDACTED_KEY_PATTERN, value)
+        # Anthropic first (keeps its specific label), then the generic backstop.
+        scrubbed = _ANTHROPIC_KEY_RE.sub(_REDACTED_KEY_PATTERN, value)
+        return _PROVIDER_KEY_RE.sub(_REDACTED_PROVIDER_KEY, scrubbed)
     if isinstance(value, dict):
         return {k: _scrub_dict_field(k, v) for k, v in value.items()}
     if isinstance(value, list):
