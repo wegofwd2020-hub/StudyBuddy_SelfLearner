@@ -123,9 +123,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: spacing.xs,
   },
-  // Fill the tile (64 − 2×2 border = 60 inner) with a hair of margin so the
-  // mark doesn't touch the bevel. resizeMode="contain" keeps it undistorted.
-  logo: { width: 54, height: 54 },
+  // Fill the tile's full inner box (64 − 2×2 border = 60). resizeMode="contain"
+  // keeps the mark undistorted; its own transparent padding leaves visual margin.
+  logo: { width: 60, height: 60 },
   // Square tiles (icon over label) with a beveled edge. Default = raised: a
   // white face with a light top/left highlight and a grey bottom/right shadow,
   // so it stands off the dark bar; glyphs are black. Selected (tileActive)
