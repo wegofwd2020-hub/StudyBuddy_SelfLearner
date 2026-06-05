@@ -23,6 +23,9 @@ from unittest.mock import patch
 
 import pytest
 
+from backend.tests.helpers import fake_provider
+from pipeline.providers.errors import LLMError
+
 # A complete, valid LessonOutput used as the mocked Anthropic response.
 _FAKE_LESSON_JSON = json.dumps(
     {
@@ -88,9 +91,7 @@ async def _wait_for_status(client, job_id: str, target: str, timeout: float = 5.
 
 @pytest.mark.asyncio
 async def test_full_loop_done(client, fake_redis, known_test_api_key):
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        MockProvider.return_value.generate.return_value = (_FAKE_LESSON_JSON, 100, 500)
-
+    with patch("backend.src.generate.tasks.build_provider", return_value=fake_provider(text=_FAKE_LESSON_JSON)):
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
         assert submit.status_code == 202
         job_id = submit.json()["job_id"]
@@ -115,12 +116,8 @@ async def test_full_loop_done(client, fake_redis, known_test_api_key):
 @pytest.mark.asyncio
 async def test_retries_invalid_json_then_succeeds(client, fake_redis, known_test_api_key):
     """A bad first response (invalid JSON) is retried; a good second one wins."""
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        MockProvider.return_value.generate.side_effect = [
-            ("not json at all", 1, 1),  # attempt 1 — fails to parse
-            (_FAKE_LESSON_JSON, 100, 500),  # attempt 2 — valid
-        ]
-
+    fake = fake_provider(responses=["not json at all", _FAKE_LESSON_JSON])
+    with patch("backend.src.generate.tasks.build_provider", return_value=fake):
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
         job_id = submit.json()["job_id"]
 
@@ -128,21 +125,21 @@ async def test_retries_invalid_json_then_succeeds(client, fake_redis, known_test
 
     assert body["status"] == "done"
     assert body["result"]["topic"] == "Quadratic formula"
-    assert MockProvider.return_value.generate.call_count == 2
+    assert fake.generate.call_count == 2  # one repair
 
 
 @pytest.mark.asyncio
 async def test_instructions_threaded_into_prompt(client, fake_redis, known_test_api_key):
     """Author enhancement instructions reach the Anthropic prompt."""
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        MockProvider.return_value.generate.return_value = (_FAKE_LESSON_JSON, 100, 500)
-
+    fake = fake_provider(text=_FAKE_LESSON_JSON)
+    with patch("backend.src.generate.tasks.build_provider", return_value=fake):
         body = _request_body(known_test_api_key, instructions="Add a diagram for the T-shape")
         submit = await client.post("/api/v1/generate", json=body)
         job_id = submit.json()["job_id"]
         await _wait_for_status(client, job_id, "done")
 
-        prompt = MockProvider.return_value.generate.call_args.args[0]
+        # generate() is called with an LLMRequest; the prompt rides on req.prompt.
+        prompt = fake.generate.call_args.args[0].prompt
 
     assert "Add a diagram for the T-shape" in prompt
 
@@ -150,9 +147,7 @@ async def test_instructions_threaded_into_prompt(client, fake_redis, known_test_
 @pytest.mark.asyncio
 async def test_envelope_shredded_after_done(client, fake_redis, known_test_api_key):
     """The byok:{job_id} key must be DELETED from Redis after the worker finishes."""
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        MockProvider.return_value.generate.return_value = (_FAKE_LESSON_JSON, 100, 500)
-
+    with patch("backend.src.generate.tasks.build_provider", return_value=fake_provider(text=_FAKE_LESSON_JSON)):
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
         job_id = submit.json()["job_id"]
 
@@ -167,9 +162,7 @@ async def test_envelope_shredded_after_done(client, fake_redis, known_test_api_k
 
 @pytest.mark.asyncio
 async def test_anthropic_failure_marks_job_failed(client, fake_redis, known_test_api_key):
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        MockProvider.return_value.generate.side_effect = RuntimeError("upstream timeout")
-
+    with patch("backend.src.generate.tasks.build_provider", return_value=fake_provider(side_effect=LLMError("anthropic call failed"))):
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
         job_id = submit.json()["job_id"]
 
@@ -182,9 +175,7 @@ async def test_anthropic_failure_marks_job_failed(client, fake_redis, known_test
 
 @pytest.mark.asyncio
 async def test_envelope_shredded_after_failure(client, fake_redis, known_test_api_key):
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        MockProvider.return_value.generate.side_effect = RuntimeError("boom")
-
+    with patch("backend.src.generate.tasks.build_provider", return_value=fake_provider(side_effect=LLMError("boom"))):
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
         job_id = submit.json()["job_id"]
         await _wait_for_status(client, job_id, "failed")
@@ -195,9 +186,7 @@ async def test_envelope_shredded_after_failure(client, fake_redis, known_test_ap
 
 @pytest.mark.asyncio
 async def test_invalid_json_marks_failed(client, fake_redis, known_test_api_key):
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        MockProvider.return_value.generate.return_value = ("not json at all", 100, 50)
-
+    with patch("backend.src.generate.tasks.build_provider", return_value=fake_provider(text="not json at all")):
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
         job_id = submit.json()["job_id"]
         body = await _wait_for_status(client, job_id, "failed")
@@ -211,9 +200,7 @@ async def test_invalid_json_marks_failed(client, fake_redis, known_test_api_key)
 async def test_schema_violation_marks_failed(client, fake_redis, known_test_api_key):
     """Anthropic returns valid JSON that doesn't match LessonOutput schema."""
     bad = json.dumps({"topic": "x"})  # missing nearly everything
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        MockProvider.return_value.generate.return_value = (bad, 50, 20)
-
+    with patch("backend.src.generate.tasks.build_provider", return_value=fake_provider(text=bad)):
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
         job_id = submit.json()["job_id"]
         body = await _wait_for_status(client, job_id, "failed")

@@ -203,16 +203,15 @@ async def test_worker_path_does_not_log_key(client, known_test_api_key, capsys):
     import json as _json
     from unittest.mock import patch
 
+    from backend.tests.helpers import fake_provider
+
     buffer, _ = _capture_log_output()
 
-    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
-        # SDK raises with the user's key in the exception message — the most
-        # dangerous case. The wrapper must swallow the chained exception so
-        # the key never lands in any log.
-        MockProvider.return_value.generate.side_effect = RuntimeError(
-            f"upstream rejected key={known_test_api_key}"
-        )
-
+    # Provider whose generate raises with the user's key in the message — the
+    # most dangerous case. The worker's broad except + redaction must ensure the
+    # key never lands in any log.
+    leaky = fake_provider(side_effect=RuntimeError(f"upstream rejected key={known_test_api_key}"))
+    with patch("backend.src.generate.tasks.build_provider", return_value=leaky):
         resp = await client.post(
             "/api/v1/generate",
             json={
