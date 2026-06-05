@@ -27,18 +27,16 @@ import uuid
 from typing import Any
 
 import redis.asyncio as redis
-from pydantic import ValidationError
-
 from backend.config import settings
 from backend.src.core.byok_envelope import decrypt_api_key, parse_master_key
 from backend.src.core.log_redaction import get_logger
-from backend.src.generate.anthropic_caller import (
-    AnthropicCallError,
-    call_anthropic,
-    parse_json_response,
-)
+from backend.src.generate.anthropic_caller import parse_json_response
 from backend.src.generate.lesson_schema import LessonOutput
 from backend.src.generate.prompt_builder import build_lesson_prompt
+from pipeline.providers.anthropic_adapter import AnthropicAdapter
+from pipeline.providers.conformance import generate_validated
+from pipeline.providers.contract import LLMRequest
+from pipeline.providers.errors import LLMError, LLMSchemaError
 
 log = get_logger("generate.tasks")
 
@@ -49,15 +47,15 @@ _DEFAULT_MAX_TOKENS = 16384
 _MODEL_MAX_TOKENS = 64000
 _TOKENS_PER_PAGE = 800
 
-# Claude is stochastic and occasionally returns non-JSON or schema-invalid
-# output; CLAUDE.md mandates retrying before failing the job. Each attempt is a
-# fresh call with the same prompt (a re-roll usually parses cleanly).
-# Raised 3 → 6: chapters whose enhancementInstructions embed a verbatim Mermaid
-# block (many quotes/backticks the model must JSON-escape) push up the per-call
-# invalid-JSON rate, so a few chapters were exhausting a 3-attempt budget. Extra
-# re-rolls only cost tokens on the chapters that actually need them (success
-# breaks the loop early).
-_MAX_GENERATION_ATTEMPTS = 6
+# Models are stochastic and occasionally return non-JSON or schema-invalid
+# output. Instead of blind re-rolls, the conformance loop (generate_validated)
+# feeds the validator's error back and asks for corrected JSON. Budget = 1
+# initial call + _MAX_REPAIRS repairs (3 total). A targeted repair beats a blind
+# re-roll per call, so 3 here is stronger than the old 6 blind attempts and
+# cheaper on the author's BYOK bill. Transient provider errors (rate-limit /
+# timeout) are not schema failures — they fail fast (see
+# docs/multi-provider-wiring-phase2.md).
+_MAX_REPAIRS = 2
 
 
 def _max_tokens_for_pages(target_pages: int) -> int:
@@ -190,61 +188,40 @@ async def run_generation(
     )
     max_tokens = _max_tokens_for_pages(target_pages)
 
-    # ── 3. Call Anthropic + parse + validate, retrying transient bad output ───
-    # The api_key is reused across attempts (each one needs it), then shredded
-    # once in `finally` — regardless of outcome — so the credential window is
-    # the job's lifetime, not a single attempt.
+    # ── 3. Generate via the provider seam: validate → repair (memo Phase 2a) ──
+    # generate_validated runs the model, validates the response, and on a schema
+    # failure feeds the validator's error back asking for corrected JSON (up to
+    # _MAX_REPAIRS). Transient provider errors (auth / rate-limit / timeout)
+    # raise an LLMError and fail fast — no outer retry. The api_key is used across
+    # the loop then shredded in `finally` on every path, so the credential window
+    # is the job's lifetime, not a single attempt.
     chosen_model = model or settings.anthropic_default_model
     lesson: LessonOutput | None = None
     last_error = "generation failed"
-    try:
-        for attempt in range(1, _MAX_GENERATION_ATTEMPTS + 1):
-            try:
-                # Sync SDK call in a thread so we don't block the event loop.
-                raw_text = await asyncio.to_thread(
-                    call_anthropic,
-                    api_key=api_key,
-                    prompt=prompt,
-                    model=chosen_model,
-                    max_tokens=max_tokens,
-                )
-            except AnthropicCallError:
-                last_error = "generation failed (Anthropic call error)"
-                log.warning(
-                    "generation_attempt_failed",
-                    job_id=str(job_id),
-                    attempt=attempt,
-                    reason="call_error",
-                )
-                continue
-            except Exception:
-                # Unknown failure — log type only, never the message.
-                last_error = "generation failed"
-                log.warning("generation_unknown_error", job_id=str(job_id), attempt=attempt)
-                continue
 
-            try:
-                parsed = parse_json_response(raw_text)
-                lesson = LessonOutput.model_validate(parsed)
-                break  # success — stop retrying
-            except AnthropicCallError:
-                last_error = "Anthropic returned invalid JSON"
-                log.warning(
-                    "generation_attempt_failed",
-                    job_id=str(job_id),
-                    attempt=attempt,
-                    reason="invalid_json",
-                )
-                continue
-            except ValidationError:
-                last_error = "generated content failed schema validation"
-                log.warning(
-                    "generation_attempt_failed",
-                    job_id=str(job_id),
-                    attempt=attempt,
-                    reason="schema",
-                )
-                continue
+    def _validate(text: str) -> LessonOutput:
+        # Raises on bad JSON (parse_json_response) or bad schema (model_validate);
+        # generate_validated treats either as invalid and repairs. Returns the
+        # validated model on success.
+        return LessonOutput.model_validate(parse_json_response(text))
+
+    try:
+        provider = AnthropicAdapter(api_key=api_key, model=chosen_model)
+        req = LLMRequest(prompt=prompt, max_tokens=max_tokens)
+        # Sync loop in a thread so we don't block the event loop.
+        result = await asyncio.to_thread(
+            generate_validated, provider, req, _validate, max_repairs=_MAX_REPAIRS
+        )
+        lesson = result.parsed
+        if result.repaired:
+            log.info("generation_repaired", job_id=str(job_id), attempts=result.attempts)
+    except LLMSchemaError:
+        last_error = "generated content failed validation"
+        log.warning("generation_failed", job_id=str(job_id), reason="schema")
+    except LLMError:
+        # Auth / rate-limit / timeout / transport — fail fast. Log type only.
+        last_error = "generation failed"
+        log.warning("generation_failed", job_id=str(job_id), reason="llm_error")
     finally:
         # SHRED: drop our key reference and the encrypted envelope as soon as
         # we're done with the user's credentials, on every path. (CPython str
@@ -255,7 +232,6 @@ async def run_generation(
 
     # ── 4. Write outcome ──────────────────────────────────────────────────────
     if lesson is None:
-        log.warning("generation_failed", job_id=str(job_id), attempts=_MAX_GENERATION_ATTEMPTS)
         await _write_status(redis_client, job_id, "failed", error=last_error)
         return
 

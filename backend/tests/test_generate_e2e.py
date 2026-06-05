@@ -171,7 +171,8 @@ async def test_anthropic_failure_marks_job_failed(client, fake_redis, known_test
         body = await _wait_for_status(client, job_id, "failed")
 
     assert body["status"] == "failed"
-    assert "Anthropic" in body["error"]
+    # Transient/provider errors fail fast with a generic, key-free message.
+    assert body["error"]
 
 
 @pytest.mark.asyncio
@@ -197,7 +198,8 @@ async def test_invalid_json_marks_failed(client, fake_redis, known_test_api_key)
         body = await _wait_for_status(client, job_id, "failed")
 
     assert body["status"] == "failed"
-    assert "JSON" in body["error"] or "invalid" in body["error"].lower()
+    # After the repair budget is exhausted, unparseable output is a validation failure.
+    assert "validation" in body["error"].lower()
 
 
 @pytest.mark.asyncio
@@ -212,7 +214,7 @@ async def test_schema_violation_marks_failed(client, fake_redis, known_test_api_
         body = await _wait_for_status(client, job_id, "failed")
 
     assert body["status"] == "failed"
-    assert "schema" in body["error"].lower()
+    assert "validation" in body["error"].lower()
 
 
 @pytest.mark.asyncio
