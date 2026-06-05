@@ -48,6 +48,30 @@ describe("saveApiKey / loadApiKey / deleteApiKey", () => {
     await deleteApiKey();
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith("sbq_byok_key");
   });
+
+  it("namespaces non-anthropic providers under their own slot", async () => {
+    await saveApiKey("sk-openai-test-key-abcdef", "openai");
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+      "sbq_byok_key_openai",
+      "sk-openai-test-key-abcdef",
+      expect.any(Object),
+    );
+
+    await loadApiKey("openai");
+    expect(SecureStore.getItemAsync).toHaveBeenCalledWith("sbq_byok_key_openai");
+
+    await deleteApiKey("openai");
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith("sbq_byok_key_openai");
+  });
+
+  it("keeps anthropic on the original (un-namespaced) slot", async () => {
+    await saveApiKey("sk-ant-test-key-abcdef", "anthropic");
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+      "sbq_byok_key",
+      "sk-ant-test-key-abcdef",
+      expect.any(Object),
+    );
+  });
 });
 
 describe("maskApiKey", () => {
@@ -74,5 +98,16 @@ describe("isValidApiKey", () => {
 
   it("rejects keys shorter than 20 chars", () => {
     expect(isValidApiKey("sk-ant-short")).toBe(false);
+  });
+
+  it("validates non-anthropic keys against the sk- prefix", () => {
+    expect(isValidApiKey("sk-FAKE_OPENAI_KEY_abcdefghij", "openai")).toBe(true);
+    expect(isValidApiKey("sk-ant-FAKE_KEY_abcdefghijkl", "openai")).toBe(true); // sk- prefix
+    expect(isValidApiKey("nope-not-a-key-abcdefghij", "openai")).toBe(false);
+  });
+
+  it("masks with the provider-appropriate prefix", () => {
+    expect(maskApiKey("sk-OPENAIKEYxxxx9876", "openai")).toBe("sk-...9876");
+    expect(maskApiKey("sk-ant-api03-xxxx1234")).toBe("sk-ant-...1234");
   });
 });

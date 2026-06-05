@@ -1,7 +1,14 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-const KEY = "sbq_byok_key";
+// Per-provider BYOK keys (Phase 3b). Anthropic keeps the original storage key so
+// existing installs need no migration; other providers are namespaced. The
+// provider id matches the backend registry / GenerationParams.provider.
+const LEGACY_ANTHROPIC_KEY = "sbq_byok_key";
+
+function storageKey(provider: string): string {
+  return provider === "anthropic" ? LEGACY_ANTHROPIC_KEY : `sbq_byok_key_${provider}`;
+}
 
 const isNative = Platform.OS !== "web";
 
@@ -14,36 +21,44 @@ const webStore = {
   del:  (key: string) => localStorage.removeItem(key),
 };
 
-export async function saveApiKey(apiKey: string): Promise<void> {
+export async function saveApiKey(apiKey: string, provider = "anthropic"): Promise<void> {
+  const key = storageKey(provider);
   if (isNative) {
-    await SecureStore.setItemAsync(KEY, apiKey, {
+    await SecureStore.setItemAsync(key, apiKey, {
       requireAuthentication: false,
       keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
     });
   } else {
-    webStore.save(KEY, apiKey);
+    webStore.save(key, apiKey);
   }
 }
 
-export async function loadApiKey(): Promise<string | null> {
-  if (isNative) return SecureStore.getItemAsync(KEY);
-  return webStore.load(KEY);
+export async function loadApiKey(provider = "anthropic"): Promise<string | null> {
+  const key = storageKey(provider);
+  if (isNative) return SecureStore.getItemAsync(key);
+  return webStore.load(key);
 }
 
-export async function deleteApiKey(): Promise<void> {
+export async function deleteApiKey(provider = "anthropic"): Promise<void> {
+  const key = storageKey(provider);
   if (isNative) {
-    await SecureStore.deleteItemAsync(KEY);
+    await SecureStore.deleteItemAsync(key);
   } else {
-    webStore.del(KEY);
+    webStore.del(key);
   }
 }
 
-export function maskApiKey(apiKey: string): string {
-  if (apiKey.length < 8) return "sk-ant-...????";
-  const last4 = apiKey.slice(-4);
-  return `sk-ant-...${last4}`;
+// Show only the provider prefix + last 4. The provider drives the displayed
+// prefix (anthropic keys are sk-ant-, the OpenAI-compatible providers are sk-).
+export function maskApiKey(apiKey: string, provider = "anthropic"): string {
+  const prefix = provider === "anthropic" ? "sk-ant-" : "sk-";
+  if (apiKey.length < 8) return `${prefix}...????`;
+  return `${prefix}...${apiKey.slice(-4)}`;
 }
 
-export function isValidApiKey(value: string): boolean {
-  return value.startsWith("sk-ant-") && value.length >= 20;
+// Client-side shape check (the backend re-validates per provider). Anthropic
+// keys are sk-ant-; the OpenAI-compatible providers use sk-.
+export function isValidApiKey(value: string, provider = "anthropic"): boolean {
+  const prefix = provider === "anthropic" ? "sk-ant-" : "sk-";
+  return value.startsWith(prefix) && value.length >= 20;
 }
