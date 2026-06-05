@@ -37,7 +37,7 @@ from pipeline.providers.anthropic_adapter import AnthropicAdapter
 from pipeline.providers.conformance import generate_validated
 from pipeline.providers.contract import LLMRequest
 from pipeline.providers.errors import LLMError, LLMSchemaError
-from pipeline.providers.registry import build_provider
+from pipeline.providers.registry import build_provider, provenance
 
 log = get_logger("generate.tasks")
 
@@ -86,12 +86,15 @@ async def _write_status(
     *,
     error: str | None = None,
     result: dict[str, Any] | None = None,
+    provenance: dict[str, Any] | None = None,
 ) -> None:
     payload: dict[str, Any] = {"status": status}
     if error is not None:
         payload["error"] = error
     if result is not None:
         payload["result"] = result
+    if provenance is not None:
+        payload["provenance"] = provenance
     await r.setex(
         _job_status_redis_key(job_id),
         settings.byok_redis_ttl_seconds * 10,  # status row outlives the envelope
@@ -198,6 +201,7 @@ async def run_generation(
     # the loop then shredded in `finally` on every path, so the credential window
     # is the job's lifetime, not a single attempt.
     lesson: LessonOutput | None = None
+    prov: dict | None = None  # which provider/model/versions produced this unit
     last_error = "generation failed"
 
     def _validate(text: str) -> LessonOutput:
@@ -221,6 +225,9 @@ async def run_generation(
             generate_validated, provider, req, _validate, max_repairs=_MAX_REPAIRS
         )
         lesson = result.parsed
+        # Stamp which provider/model + integration/contract versions produced this
+        # unit (the resolved model, which may differ from what was requested).
+        prov = provenance(provider_id, provider.model)
         if result.repaired:
             log.info("generation_repaired", job_id=str(job_id), attempts=result.attempts)
     except LLMSchemaError:
@@ -253,5 +260,6 @@ async def run_generation(
         job_id,
         "done",
         result=lesson.model_dump(),
+        provenance=prov,
     )
     log.info("generation_done", job_id=str(job_id))

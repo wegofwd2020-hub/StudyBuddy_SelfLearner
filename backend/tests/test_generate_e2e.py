@@ -101,6 +101,11 @@ async def test_full_loop_done(client, fake_redis, known_test_api_key):
     result = body["result"]
     assert result["topic"] == "Quadratic formula"
     assert len(result["sections"]) == 2
+    # Provenance records which provider/model + versions produced the unit.
+    prov = body["provenance"]
+    assert prov["provider"] == "anthropic"
+    assert prov["model"]  # resolved model id
+    assert "contract_version" in prov and "integration_version" in prov
     assert (
         "$x = " in result["sections"][1]["body_markdown"]
         or "x =" in result["sections"][1]["body_markdown"]
@@ -276,6 +281,7 @@ async def test_openai_provider_path_done(client, fake_redis):
 
     assert result["status"] == "done"
     assert result["result"]["topic"] == "Quadratic formula"
+    assert result["provenance"]["provider"] == "openai"
 
 
 @pytest.mark.asyncio

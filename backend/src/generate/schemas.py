@@ -115,3 +115,7 @@ class JobStatusResponse(BaseModel):
     # Result is intentionally untyped at MVP — schema lands in PR-2 with the
     # actual lesson generator.
     result: dict | None = None
+    # Which provider/model + integration/contract versions produced the result
+    # (present on a done job). Lets the client detect content made with an
+    # outdated model/integration and offer to regenerate. See registry.provenance.
+    provenance: dict | None = None
