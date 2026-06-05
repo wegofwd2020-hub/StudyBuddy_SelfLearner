@@ -59,34 +59,37 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         managed_env_key="OPENAI_API_KEY",
         key_prefix="sk-",
     ),
-    # ── Free / low-cost OpenAI-compatible providers (BYOK; get a free key) ──────
-    # base_url, default_model and key_prefix are best-effort and UNVERIFIED —
-    # confirm against each vendor before relying on them.
+    # ── Free OpenAI-compatible providers (BYOK; get a free key) ─────────────────
+    # base_url + default_model verified against vendor docs 2026-06-05; re-check
+    # periodically as vendors rotate free models.
     "groq": ProviderSpec(
         provider_id="groq",
         openai_compatible=True,
-        base_url="https://api.groq.com/openai/v1",  # UNVERIFIED
-        default_model="llama-3.3-70b-versatile",  # UNVERIFIED
+        base_url="https://api.groq.com/openai/v1",
+        default_model="llama-3.3-70b-versatile",  # current Groq production model
         capabilities=Capabilities(json_object=True, max_context=128_000),
         managed_env_key="GROQ_API_KEY",
+        model_verified=True,
         key_prefix="gsk_",  # Groq keys start with gsk_
     ),
     "openrouter": ProviderSpec(
         provider_id="openrouter",
         openai_compatible=True,
-        base_url="https://openrouter.ai/api/v1",  # UNVERIFIED
-        default_model="meta-llama/llama-3.1-8b-instruct:free",  # UNVERIFIED (a :free model)
-        capabilities=Capabilities(json_object=True, max_context=64_000),
+        base_url="https://openrouter.ai/api/v1",
+        default_model="meta-llama/llama-3.3-70b-instruct:free",  # a current :free model
+        capabilities=Capabilities(json_object=True, max_context=128_000),
         managed_env_key="OPENROUTER_API_KEY",
+        model_verified=True,
         key_prefix="sk-or-",  # OpenRouter keys start with sk-or-
     ),
     "gemini": ProviderSpec(
         provider_id="gemini",
         openai_compatible=True,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai",  # UNVERIFIED
-        default_model="gemini-1.5-flash",  # UNVERIFIED
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        default_model="gemini-2.0-flash",  # current stable flash (1.5 retired)
         capabilities=Capabilities(json_object=True, max_context=1_000_000),
         managed_env_key="GEMINI_API_KEY",
+        model_verified=True,
         key_prefix="",  # Google keys are AIza… — no sk-; skip the prefix check
     ),
     "deepseek": ProviderSpec(

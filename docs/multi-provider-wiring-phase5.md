@@ -27,11 +27,20 @@ Free providers don't use `sk-`, so the `sk-`/`sk-ant-` assumption is generalized
   validate/mask are driven by it. Both pickers (Settings + params editor) render
   the new providers automatically.
 
-## ⚠ UNVERIFIED
-`base_url`, `default_model`, and exact `key_prefix` for each free provider are
-best-effort from training data — **confirm against each vendor** before relying
-on them. They're marked UNVERIFIED in the registry. CI never calls them
-(tests patch `tasks.build_provider`).
+## Verification (2026-06-05)
+`base_url`, `default_model`, and `key_prefix` confirmed against vendor docs and
+corrected (`model_verified=True`):
+- **Groq** `https://api.groq.com/openai/v1` · `llama-3.3-70b-versatile` (current
+  production) · `gsk_`.
+- **OpenRouter** `https://openrouter.ai/api/v1` ·
+  `meta-llama/llama-3.3-70b-instruct:free` (was the older 3.1-8b) · `sk-or-`.
+- **Gemini** `https://generativelanguage.googleapis.com/v1beta/openai` ·
+  `gemini-2.0-flash` (was the retired 1.5-flash) · `AIza…` (no prefix check).
+
+Re-check periodically — vendors rotate free models. CI never calls them
+(tests patch `tasks.build_provider`). **Note:** endpoint/model verified ≠
+output verified — the pickers still mark these *experimental* (conformance not
+yet measured for book-grade JSON).
 
 ## Testing
 Green: **backend 158** (backend/tests + tests/llm) · **mobile jest 131**. New
