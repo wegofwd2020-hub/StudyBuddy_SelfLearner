@@ -8,10 +8,9 @@ import { colors, radius, spacing, typography } from "@/constants/theme";
 type IconName = keyof typeof Ionicons.glyphMap;
 
 // route name → label + active/inactive icon. The app launches on Library;
-// `index` is a redirect-to-Library route (not shown), Query has its own route.
+// `index` is a redirect-to-Library route (not shown).
 const TABS: Record<string, { label: string; active: IconName; inactive: IconName }> = {
   library: { label: "Library", active: "bookmarks", inactive: "bookmarks-outline" },
-  query: { label: "Query", active: "sparkles", inactive: "sparkles-outline" },
   books: { label: "Books", active: "book", inactive: "book-outline" },
   settings: { label: "Settings", active: "settings", inactive: "settings-outline" },
   help: { label: "Help", active: "help-circle", inactive: "help-circle-outline" },
@@ -20,11 +19,11 @@ const TABS: Record<string, { label: string; active: IconName; inactive: IconName
 
 // Visual left→right order of the menu. Library is first (and the landing); the
 // brand logo is rendered before this row and links to Library (home).
-const ORDER = ["library", "query", "books", "settings", "help", "about"];
+const ORDER = ["library", "books", "settings", "help", "about"];
 
 // Top, center-aligned navigation bar with square icon+label tiles and a leading
-// Mentible mark that jumps to Query. Replaces the default bottom tab bar (passed
-// to <Tabs tabBar={…}>); horizontally scrollable so 7 items don't cramp a phone.
+// Mentible mark that jumps to Library (home). Replaces the default bottom tab bar
+// (passed to <Tabs tabBar={…}>); horizontally scrollable so items don't cramp a phone.
 export function TopNavBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const routeByName = new Map(state.routes.map((r) => [r.name, r] as const));

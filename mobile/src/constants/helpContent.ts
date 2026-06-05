@@ -58,9 +58,9 @@ export const HELP_TOPICS: HelpTopic[] = [
         kind: "steps",
         steps: [
           "Add your Anthropic API key in Settings (stored only on your device).",
-          "On Query, describe what you want to learn and set the scope.",
-          "Generate — your lesson is rendered with math, diagrams and tables.",
-          "Save lessons to your Library, or open compiled books under Books.",
+          "In Books, start a new book or import one, then structure its table of contents.",
+          "Generate — each topic is written with math, diagrams and tables, scoped by level, depth and diagram register.",
+          "Save the finished book to your Library as an EPUB you can read or export.",
         ],
       },
     ],
