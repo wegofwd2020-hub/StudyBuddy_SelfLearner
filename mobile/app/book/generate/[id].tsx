@@ -104,7 +104,8 @@ export default function GenerateAllScreen() {
     [book?.id],
   );
 
-  const getApiKey = useCallback(() => loadApiKey(), []);
+  // Load the key for the book's pinned provider (defaults to anthropic).
+  const getApiKey = useCallback(() => loadApiKey(params.provider), [params.provider]);
 
   const handleTopicDone = useCallback(
     async (topicId: string, title: string, lesson: LessonOutput) => {

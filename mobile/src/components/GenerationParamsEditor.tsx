@@ -3,14 +3,15 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { useRouter } from "expo-router";
 import { LevelPicker } from "@/components/LevelPicker";
 import { DEPTHS } from "@/constants/depths";
+import { PROVIDERS, providerInfo } from "@/constants/providers";
 import { REGISTERS } from "@/constants/registers";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import type { GenerationParams } from "@/types/generationParams";
 
-// The single editor for the generation template (Level + Depth + Pages), shared
-// by Settings (global default), the book generate screen (per-book), and the
-// Query screen (one-off). Stepper buttons keep Pages settable without a soft
-// keyboard (the emulator doesn't always render one).
+// The single editor for the generation template (Model + Level + Depth + Pages),
+// shared by Settings (global default) and the book generate screen (per-book).
+// Stepper buttons keep Pages settable without a soft keyboard (the emulator
+// doesn't always render one).
 export function GenerationParamsEditor({
   value,
   onChange,
@@ -19,7 +20,6 @@ export function GenerationParamsEditor({
 }: {
   value: GenerationParams;
   onChange: (next: GenerationParams) => void;
-  // Override for the single-lesson Query screen (pages aren't a whole-book sum).
   pagesLabel?: string;
   pagesHint?: string;
 }) {
@@ -30,6 +30,34 @@ export function GenerationParamsEditor({
 
   return (
     <View style={styles.root}>
+      <Text style={styles.label}>Model</Text>
+      <Text style={styles.paramHint}>
+        Which AI writes the book — pinned for every topic. Needs that provider&apos;s key in Settings.
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+        {PROVIDERS.map((p) => {
+          const selected = p.id === value.provider;
+          return (
+            <Pressable
+              key={p.id}
+              onPress={() => set({ provider: p.id, model: null })}
+              style={[styles.chip, selected && styles.chipSelected]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              accessibilityLabel={`${p.label}${p.tier === "experimental" ? " — experimental" : ""}`}
+            >
+              <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{p.label}</Text>
+              <Text style={[styles.chipDesc, selected && styles.chipDescSelected]}>
+                {p.tier === "authoring" ? "Authoring-grade" : "Experimental"}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      {providerInfo(value.provider).note ? (
+        <Text style={styles.paramHint}>{providerInfo(value.provider).note}</Text>
+      ) : null}
+
       <Text style={styles.label}>Level</Text>
       <Text style={styles.paramHint}>Who it&apos;s written for — sets the reading level and assumed background.</Text>
       <LevelPicker value={value.level} onChange={(level) => set({ level })} />

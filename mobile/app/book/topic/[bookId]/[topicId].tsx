@@ -64,7 +64,8 @@ export default function BookTopicScreen() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [instructions, setInstructions] = useState("");
 
-  const getApiKey = useCallback(() => loadApiKey(), []);
+  // Load the key for the book's pinned provider (defaults to anthropic).
+  const getApiKey = useCallback(() => loadApiKey(book?.generationParams?.provider), [book]);
   const { status, error, run } = useGenerateTopic({ getApiKey });
   const regenerating = status === "generating";
 
