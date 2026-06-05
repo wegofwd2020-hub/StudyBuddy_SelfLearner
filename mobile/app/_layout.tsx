@@ -30,13 +30,6 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="lesson/[jobId]"
-          options={{
-            title: "Lesson",
-            headerBackTitle: "Back",
-          }}
-        />
-        <Stack.Screen
           name="book/new"
           options={{
             title: "New book",

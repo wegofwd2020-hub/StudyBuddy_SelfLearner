@@ -138,9 +138,9 @@ export default function DiagramTypesScreen() {
         ))}
 
         <Text style={styles.footnote}>
-          Set the register under “Diagrams” on the Query screen, or in Settings for
-          new books. Any chapter can still ask for a specific diagram via its
-          enhancement instructions.
+          Set the register under “Diagrams” when you generate a book, or in Settings
+          as the default for new books. Any chapter can still ask for a specific
+          diagram via its enhancement instructions.
         </Text>
       </PageContainer>
 
