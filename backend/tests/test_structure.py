@@ -7,7 +7,7 @@ behaviour on malformed JSON, fail-fast on transport errors, idempotency, and
 envelope shredding.
 
 Mock seam: same as the /generate tests — patch
-`backend.src.generate.anthropic_caller.AnthropicProvider`, since structure
+`pipeline.providers.anthropic_adapter.AnthropicProvider`, since structure
 tasks reuse that module's `call_anthropic`.
 """
 
@@ -71,7 +71,7 @@ async def _wait_for_status(client, job_id: str, target: str, timeout: float = 5.
 
 @pytest.mark.asyncio
 async def test_full_loop_done(client, fake_redis, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (_FAKE_TOC_JSON, 100, 300)
 
         submit = await client.post("/api/v1/structure", json=_request_body(known_test_api_key))
@@ -89,7 +89,7 @@ async def test_full_loop_done(client, fake_redis, known_test_api_key):
 
 @pytest.mark.asyncio
 async def test_envelope_shredded_after_done(client, fake_redis, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (_FAKE_TOC_JSON, 100, 300)
 
         submit = await client.post("/api/v1/structure", json=_request_body(known_test_api_key))
@@ -105,7 +105,7 @@ async def test_envelope_shredded_after_done(client, fake_redis, known_test_api_k
 @pytest.mark.asyncio
 async def test_malformed_json_retries_then_succeeds(client, fake_redis, known_test_api_key):
     """Two malformed responses, then a good one → done, with 3 provider calls."""
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.side_effect = [
             ("not json", 10, 5),
             ("{ still bad", 10, 5),
@@ -125,7 +125,7 @@ async def test_malformed_json_retries_then_succeeds(client, fake_redis, known_te
 @pytest.mark.asyncio
 async def test_malformed_json_exhausts_retries_marks_failed(client, fake_redis, known_test_api_key):
     """Always-malformed JSON → failed after exactly 3 attempts; envelope shredded."""
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = ("never valid json", 10, 5)
 
         submit = await client.post("/api/v1/structure", json=_request_body(known_test_api_key))
@@ -143,7 +143,7 @@ async def test_malformed_json_exhausts_retries_marks_failed(client, fake_redis, 
 async def test_empty_toc_tree_marks_failed(client, fake_redis, known_test_api_key):
     """Valid JSON whose tree has no units → schema-level StructureError → failed."""
     empty = json.dumps({"subjects": [{"subject_label": "Physics", "units": []}]})
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (empty, 10, 5)
 
         submit = await client.post("/api/v1/structure", json=_request_body(known_test_api_key))
@@ -158,7 +158,7 @@ async def test_empty_toc_tree_marks_failed(client, fake_redis, known_test_api_ke
 
 @pytest.mark.asyncio
 async def test_anthropic_failure_marks_failed_without_retry(client, fake_redis, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.side_effect = RuntimeError("upstream timeout")
 
         submit = await client.post("/api/v1/structure", json=_request_body(known_test_api_key))
@@ -178,7 +178,7 @@ async def test_anthropic_failure_marks_failed_without_retry(client, fake_redis, 
 
 @pytest.mark.asyncio
 async def test_idempotent_resubmit_returns_same_job(client, fake_redis, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (_FAKE_TOC_JSON, 100, 300)
 
         body = _request_body(known_test_api_key)

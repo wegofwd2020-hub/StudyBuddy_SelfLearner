@@ -3,13 +3,13 @@ pipeline/providers/anthropic_adapter.py
 
 Wraps the existing (legacy, tuple-returning) AnthropicProvider in the new
 `Provider` contract WITHOUT modifying anthropic.py — so the multi-provider core
-can drive Anthropic today and the backend rewire can switch over later (deferred
-behind PR #44, which also edits anthropic.py).
+can drive Anthropic today and the backend rewire can switch over later.
 
-Note: the legacy generate() hardcodes max_tokens=16384, so `req.max_tokens` is
-not yet honoured here; that wiring lands with the rewire. Errors are remapped to
-the typed hierarchy with KEY-FREE messages (the SDK's exceptions can stringify
-the api_key, so they are never chained).
+`req.max_tokens` IS honoured (passed through to the legacy generate, which
+already accepts it) so the page-scaled token ceiling is preserved when the
+backend routes through this adapter. Errors are remapped to the typed hierarchy
+with KEY-FREE messages (the SDK's exceptions can stringify the api_key, so they
+are never chained).
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ class AnthropicAdapter(Provider):
 
     def generate(self, req: LLMRequest) -> LLMResponse:
         try:
-            text, in_tok, out_tok = self._inner.generate(req.prompt)
+            text, in_tok, out_tok = self._inner.generate(req.prompt, max_tokens=req.max_tokens)
         except Exception:
             # Never chain: SDK exceptions may include the api_key in their repr.
             raise LLMError("anthropic call failed") from None

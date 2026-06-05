@@ -1,19 +1,25 @@
-"""Thin wrapper around the vendored AnthropicProvider.
+"""Backend seam for one LLM call, routed through the multi-provider contract.
 
-This is the seam tests mock — by patching `call_anthropic` directly, tests
-avoid touching the real Anthropic SDK or constructing real provider instances.
+`call_anthropic` builds an `AnthropicAdapter` (which wraps the legacy
+tuple-returning AnthropicProvider in the new `Provider` contract) and drives it
+with an `LLMRequest`. Behaviour is identical to calling Anthropic directly —
+this is Phase 1 of the multi-provider wiring (see docs/multi-provider-wiring-
+phase1.md): same model, prompt and max_tokens, no tool-use or repair loop yet.
 
 CRITICAL: this module never logs the api_key. Even on exception, the user's
 key must not appear in the traceback or error message. We catch broad
 exceptions, log a SAFE message (no traceback dump), and re-raise our own
-exception type that carries no key material.
+exception type that carries no key material. The adapter already remaps SDK
+errors to a key-free typed hierarchy (`from None`); we re-wrap to
+`AnthropicCallError` for the existing callers.
 """
 
 from __future__ import annotations
 
 import json
 
-from pipeline.providers.anthropic import AnthropicProvider
+from pipeline.providers.anthropic_adapter import AnthropicAdapter
+from pipeline.providers.contract import LLMRequest
 
 from backend.src.core.log_redaction import get_logger
 
@@ -50,8 +56,8 @@ def call_anthropic(*, api_key: str, prompt: str, model: str, max_tokens: int = 1
         raise AnthropicCallError("missing api_key")
 
     try:
-        provider = AnthropicProvider(api_key=api_key, model=model)
-        text, in_tok, out_tok = provider.generate(prompt, max_tokens=max_tokens)
+        provider = AnthropicAdapter(api_key=api_key, model=model)
+        resp = provider.generate(LLMRequest(prompt=prompt, max_tokens=max_tokens))
     except Exception as exc:
         # Log the EXCEPTION TYPE only — never the message, never with exc_info.
         # SDK exceptions sometimes include the api_key in their repr.
@@ -61,11 +67,11 @@ def call_anthropic(*, api_key: str, prompt: str, model: str, max_tokens: int = 1
     log.info(
         "anthropic_call_ok",
         model=model,
-        input_tokens=in_tok,
-        output_tokens=out_tok,
-        response_chars=len(text),
+        input_tokens=resp.input_tokens,
+        output_tokens=resp.output_tokens,
+        response_chars=len(resp.text),
     )
-    return text
+    return resp.text
 
 
 def parse_json_response(text: str) -> dict:

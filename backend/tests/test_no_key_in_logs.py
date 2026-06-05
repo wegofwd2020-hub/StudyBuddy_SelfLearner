@@ -96,7 +96,7 @@ async def test_generate_endpoint_does_not_log_key(client, known_test_api_key, ca
 
     buffer, _ = _capture_log_output()
 
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         # Simulate a successful (mock) generation. The test only cares that
         # the key never lands in any log along the way.
         MockProvider.return_value.generate.return_value = (
@@ -195,7 +195,7 @@ async def test_worker_path_does_not_log_key(client, known_test_api_key, capsys):
 
     buffer, _ = _capture_log_output()
 
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         # SDK raises with the user's key in the exception message — the most
         # dangerous case. The wrapper must swallow the chained exception so
         # the key never lands in any log.

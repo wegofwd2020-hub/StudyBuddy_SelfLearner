@@ -88,7 +88,7 @@ async def _wait_for_status(client, job_id: str, target: str, timeout: float = 5.
 
 @pytest.mark.asyncio
 async def test_full_loop_done(client, fake_redis, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (_FAKE_LESSON_JSON, 100, 500)
 
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
@@ -110,7 +110,7 @@ async def test_full_loop_done(client, fake_redis, known_test_api_key):
 @pytest.mark.asyncio
 async def test_retries_invalid_json_then_succeeds(client, fake_redis, known_test_api_key):
     """A bad first response (invalid JSON) is retried; a good second one wins."""
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.side_effect = [
             ("not json at all", 1, 1),  # attempt 1 — fails to parse
             (_FAKE_LESSON_JSON, 100, 500),  # attempt 2 — valid
@@ -129,7 +129,7 @@ async def test_retries_invalid_json_then_succeeds(client, fake_redis, known_test
 @pytest.mark.asyncio
 async def test_instructions_threaded_into_prompt(client, fake_redis, known_test_api_key):
     """Author enhancement instructions reach the Anthropic prompt."""
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (_FAKE_LESSON_JSON, 100, 500)
 
         body = _request_body(known_test_api_key, instructions="Add a diagram for the T-shape")
@@ -145,7 +145,7 @@ async def test_instructions_threaded_into_prompt(client, fake_redis, known_test_
 @pytest.mark.asyncio
 async def test_envelope_shredded_after_done(client, fake_redis, known_test_api_key):
     """The byok:{job_id} key must be DELETED from Redis after the worker finishes."""
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (_FAKE_LESSON_JSON, 100, 500)
 
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
@@ -162,7 +162,7 @@ async def test_envelope_shredded_after_done(client, fake_redis, known_test_api_k
 
 @pytest.mark.asyncio
 async def test_anthropic_failure_marks_job_failed(client, fake_redis, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.side_effect = RuntimeError("upstream timeout")
 
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
@@ -176,7 +176,7 @@ async def test_anthropic_failure_marks_job_failed(client, fake_redis, known_test
 
 @pytest.mark.asyncio
 async def test_envelope_shredded_after_failure(client, fake_redis, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.side_effect = RuntimeError("boom")
 
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
@@ -189,7 +189,7 @@ async def test_envelope_shredded_after_failure(client, fake_redis, known_test_ap
 
 @pytest.mark.asyncio
 async def test_invalid_json_marks_failed(client, fake_redis, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = ("not json at all", 100, 50)
 
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
@@ -204,7 +204,7 @@ async def test_invalid_json_marks_failed(client, fake_redis, known_test_api_key)
 async def test_schema_violation_marks_failed(client, fake_redis, known_test_api_key):
     """Anthropic returns valid JSON that doesn't match LessonOutput schema."""
     bad = json.dumps({"topic": "x"})  # missing nearly everything
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (bad, 50, 20)
 
         submit = await client.post("/api/v1/generate", json=_request_body(known_test_api_key))
