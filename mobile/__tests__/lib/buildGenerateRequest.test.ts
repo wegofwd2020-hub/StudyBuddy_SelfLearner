@@ -8,6 +8,8 @@ const PARAMS: GenerationParams = {
   language: "en",
   format: "lesson",
   diagramRegister: "technical",
+  provider: "anthropic",
+  model: null,
 };
 
 describe("buildGenerateRequest", () => {
@@ -45,5 +47,30 @@ describe("buildGenerateRequest", () => {
   it("treats no page target as 0", () => {
     const r = buildGenerateRequest({ topic: "T", apiKey: "k", params: { ...PARAMS, pages: 0 } });
     expect(r.target_pages).toBe(0);
+  });
+
+  it("pins the provider and omits model when none is set", () => {
+    const r = buildGenerateRequest({ topic: "T", apiKey: "k", params: PARAMS });
+    expect(r.provider_id).toBe("anthropic");
+    expect(r.model).toBeUndefined();
+  });
+
+  it("sends provider_id and model when the book pins a specific model", () => {
+    const r = buildGenerateRequest({
+      topic: "T",
+      apiKey: "k",
+      params: { ...PARAMS, provider: "openai", model: "gpt-4o-mini" },
+    });
+    expect(r.provider_id).toBe("openai");
+    expect(r.model).toBe("gpt-4o-mini");
+  });
+
+  it("defaults provider_id to anthropic if the stored template predates the field", () => {
+    // An older Book.generationParams may lack `provider`; the builder still pins.
+    const legacy = { ...PARAMS } as GenerationParams;
+    // @ts-expect-error simulate a pre-Phase-3 stored param object
+    delete legacy.provider;
+    const r = buildGenerateRequest({ topic: "T", apiKey: "k", params: legacy });
+    expect(r.provider_id).toBe("anthropic");
   });
 });

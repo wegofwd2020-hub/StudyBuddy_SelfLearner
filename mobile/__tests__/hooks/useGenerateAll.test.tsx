@@ -31,6 +31,9 @@ const params = (pages = 0): GenerationParams => ({
   pages,
   language: "en",
   format: "lesson",
+  diagramRegister: "balanced",
+  provider: "anthropic",
+  model: null,
 });
 
 function toc(): StructuredTOC {

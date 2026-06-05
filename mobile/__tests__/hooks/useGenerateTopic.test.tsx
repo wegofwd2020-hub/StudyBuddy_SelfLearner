@@ -19,6 +19,9 @@ const PARAMS: GenerationParams = {
   pages: 0,
   language: "en",
   format: "lesson",
+  diagramRegister: "balanced",
+  provider: "anthropic",
+  model: null,
 };
 
 const LESSON = {

@@ -1,8 +1,9 @@
-// The reusable "scoped query" template (SCOPE.md §mental-model) shared by every
-// generation path — the Query single lesson, the book generate-all loop, and
-// per-topic regeneration. Stored per-book (Book.generationParams) and seeded
-// from a global default (settingsStore). language/format are fixed at MVP but
-// kept here so the template is the single source of truth.
+// The reusable scoped-generation template (SCOPE.md §mental-model) shared by
+// every generation path — the book generate-all loop and per-topic regeneration.
+// Stored per-book (Book.generationParams) and seeded from a global default
+// (settingsStore). language/format are fixed at MVP but kept here so the template
+// is the single source of truth. provider/model pin the LLM per book (one model
+// per book for voice/format consistency — see docs/multi-provider-wiring-phase3).
 
 export type Depth = "quick" | "standard" | "deep";
 
@@ -22,6 +23,11 @@ export interface GenerationParams {
   language: string; // "en" at MVP
   format: "lesson"; // D13 — only lesson at MVP
   diagramRegister: DiagramRegister; // diagram direction (conceptual ↔ technical)
+  // LLM the book is pinned to (BYOK). Mirrors the backend provider_id; a known
+  // provider id from pipeline/providers/registry ("anthropic", "openai", …).
+  provider: string;
+  // Optional concrete model override; null = the provider's registry default.
+  model: string | null;
 }
 
 export const DEFAULT_GENERATION_PARAMS: GenerationParams = {
@@ -31,4 +37,6 @@ export const DEFAULT_GENERATION_PARAMS: GenerationParams = {
   language: "en",
   format: "lesson",
   diagramRegister: "balanced",
+  provider: "anthropic",
+  model: null,
 };
