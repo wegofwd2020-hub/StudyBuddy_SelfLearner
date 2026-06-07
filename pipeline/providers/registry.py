@@ -67,7 +67,9 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         openai_compatible=True,
         base_url="https://api.groq.com/openai/v1",
         default_model="llama-3.3-70b-versatile",  # current Groq production model
-        capabilities=Capabilities(json_object=True, max_context=128_000),
+        # Free tier enforces a per-request/TPM token limit (~12k); 16384 → HTTP 413.
+        # Cap output so input+output stays under it. Verified 2026-06-07.
+        capabilities=Capabilities(json_object=True, max_context=128_000, max_output_tokens=8000),
         managed_env_key="GROQ_API_KEY",
         model_verified=True,
         key_prefix="gsk_",  # Groq keys start with gsk_
@@ -77,7 +79,8 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         openai_compatible=True,
         base_url="https://openrouter.ai/api/v1",
         default_model="meta-llama/llama-3.3-70b-instruct:free",  # a current :free model
-        capabilities=Capabilities(json_object=True, max_context=128_000),
+        # :free model variants cap completion length; keep output modest.
+        capabilities=Capabilities(json_object=True, max_context=128_000, max_output_tokens=8000),
         managed_env_key="OPENROUTER_API_KEY",
         model_verified=True,
         key_prefix="sk-or-",  # OpenRouter keys start with sk-or-
@@ -87,7 +90,8 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         openai_compatible=True,
         base_url="https://generativelanguage.googleapis.com/v1beta/openai",
         default_model="gemini-2.0-flash",  # current stable flash (1.5 retired)
-        capabilities=Capabilities(json_object=True, max_context=1_000_000),
+        # gemini-2.0-flash max output is 8192.
+        capabilities=Capabilities(json_object=True, max_context=1_000_000, max_output_tokens=8192),
         managed_env_key="GEMINI_API_KEY",
         model_verified=True,
         key_prefix="",  # Google keys are AIza… — no sk-; skip the prefix check
