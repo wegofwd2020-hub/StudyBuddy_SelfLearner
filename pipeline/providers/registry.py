@@ -45,7 +45,9 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         openai_compatible=False,
         default_model="claude-sonnet-4-6",
         # JSON delivered via tool-use (see anthropic_native.py).
-        capabilities=Capabilities(json_object=True, json_schema=True, tools=True, max_context=200_000),
+        capabilities=Capabilities(
+            json_object=True, json_schema=True, tools=True, max_context=200_000
+        ),
         managed_env_key="ANTHROPIC_API_KEY",
         model_verified=True,
         key_prefix="sk-ant-",
@@ -55,7 +57,9 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         openai_compatible=True,
         base_url="https://api.openai.com/v1",
         default_model="gpt-4o-mini",  # UNVERIFIED
-        capabilities=Capabilities(json_object=True, json_schema=True, tools=True, max_context=128_000),
+        capabilities=Capabilities(
+            json_object=True, json_schema=True, tools=True, max_context=128_000
+        ),
         managed_env_key="OPENAI_API_KEY",
         key_prefix="sk-",
     ),
@@ -157,7 +161,9 @@ def validate_selection(
     if spec is None:
         raise LLMConfigurationError(f"unknown provider {provider_id!r}")
     if allowed is not None and provider_id not in set(allowed):
-        raise LLMNotAllowedError(f"provider {provider_id!r} is excluded by the author's allow-list")
+        raise LLMNotAllowedError(
+            f"provider {provider_id!r} is excluded by the author's allow-list"
+        )
     return provider_id, (model or spec.default_model)
 
 
