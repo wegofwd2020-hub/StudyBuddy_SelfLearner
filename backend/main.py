@@ -30,12 +30,15 @@ from backend.src.core.log_redaction import (
     get_logger,
     scrub_validation_errors,
 )
-
-# Starlette renamed HTTP_422_UNPROCESSABLE_ENTITY → ..._CONTENT; tolerate both.
-_HTTP_422 = getattr(_status, "HTTP_422_UNPROCESSABLE_CONTENT", None) or _status.HTTP_422_UNPROCESSABLE_ENTITY
 from backend.src.export import router as export_router
 from backend.src.generate import router as generate_router
 from backend.src.structure import router as structure_router
+
+# Starlette renamed HTTP_422_UNPROCESSABLE_ENTITY → ..._CONTENT; tolerate both.
+_HTTP_422 = (
+    getattr(_status, "HTTP_422_UNPROCESSABLE_CONTENT", None)
+    or _status.HTTP_422_UNPROCESSABLE_ENTITY
+)
 
 configure_logging(settings.log_level)
 log = get_logger("main")
@@ -68,8 +71,11 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
+
 @app.exception_handler(RequestValidationError)
-async def _validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+async def _validation_exception_handler(
+    _request: Request, exc: RequestValidationError
+) -> JSONResponse:
     """422 handler that scrubs the BYOK key from the echoed request.
 
     FastAPI's default handler returns the offending `input` in the response body.
