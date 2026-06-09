@@ -34,6 +34,10 @@ export function buildGenerateRequest({
     depth: params.depth,
     diagram_register: params.diagramRegister,
     target_pages: pages > 0 ? pages : 0,
+    // Pin the book's chosen LLM (defaults to anthropic). model only when an
+    // explicit override is set — otherwise the backend uses the provider default.
+    provider_id: params.provider ?? "anthropic",
+    ...(params.model ? { model: params.model } : {}),
     ...(trimmed ? { instructions: trimmed } : {}),
     api_key: apiKey,
   };

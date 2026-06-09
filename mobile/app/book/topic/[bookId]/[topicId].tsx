@@ -64,7 +64,8 @@ export default function BookTopicScreen() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [instructions, setInstructions] = useState("");
 
-  const getApiKey = useCallback(() => loadApiKey(), []);
+  // Load the key for the book's pinned provider (defaults to anthropic).
+  const getApiKey = useCallback(() => loadApiKey(book?.generationParams?.provider), [book]);
   const { status, error, run } = useGenerateTopic({ getApiKey });
   const regenerating = status === "generating";
 
@@ -99,14 +100,15 @@ export default function BookTopicScreen() {
     setBook(withInstr);
     await saveBook(withInstr);
 
-    const lesson = await run({ title, subtopics, params, instructions: trimmed || undefined });
-    if (!lesson) return; // failure surfaces via `error`
+    const result = await run({ title, subtopics, params, instructions: trimmed || undefined });
+    if (!result) return; // failure surfaces via `error`
 
     const next = setTopicContent(withInstr, {
       topicId,
       title,
-      lesson,
+      lesson: result.lesson,
       generatedAt: new Date().toISOString(),
+      provenance: result.provenance,
     });
     setBook(next);
     setTopic(next.content?.[topicId] ?? null);

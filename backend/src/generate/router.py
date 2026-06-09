@@ -144,6 +144,7 @@ async def submit_generate(
         prior_knowledge=body.prior_knowledge,
         framing=body.framing,
         instructions=body.instructions,
+        provider_id=body.provider_id,
         model=body.model,
         redis_client=r,
     )
@@ -181,4 +182,5 @@ async def get_job_status(
         status=payload.get("status", "queued"),
         error=payload.get("error"),
         result=payload.get("result"),
+        provenance=payload.get("provenance"),
     )

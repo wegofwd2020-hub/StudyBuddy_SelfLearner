@@ -18,6 +18,7 @@ import {
 } from "@/secure/keyStore";
 import { useRouter } from "expo-router";
 import { colors, radius, spacing, typography } from "@/constants/theme";
+import { DEFAULT_PROVIDER_ID, PROVIDERS, providerInfo } from "@/constants/providers";
 import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
 import { HelpButton } from "@/components/HelpButton";
 import { PageContainer } from "@/components/PageContainer";
@@ -30,50 +31,60 @@ export default function SettingsScreen() {
   const [savedMask, setSavedMask] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [params, setParams] = useState<GenerationParams>(DEFAULT_GENERATION_PARAMS);
+  // Which provider's BYOK key the section is managing (Phase 3b).
+  const [keyProvider, setKeyProvider] = useState(DEFAULT_PROVIDER_ID);
+
+  // Load the saved key for the selected provider whenever it changes; clear the
+  // draft so a half-typed key doesn't carry across providers.
+  useEffect(() => {
+    setDraftKey("");
+    setSavedMask(null);
+    loadApiKey(keyProvider).then((key) => {
+      if (key) setSavedMask(maskApiKey(key, keyProvider));
+    });
+  }, [keyProvider]);
 
   useEffect(() => {
-    loadApiKey().then((key) => {
-      if (key) setSavedMask(maskApiKey(key));
-    });
     loadDefaultParams().then(setParams);
   }, []);
 
   const handleSave = useCallback(async () => {
     const trimmed = draftKey.trim();
-    if (!isValidApiKey(trimmed)) {
+    const info = providerInfo(keyProvider);
+    if (!isValidApiKey(trimmed, keyProvider)) {
       Alert.alert(
         "Invalid key",
-        "Anthropic API keys start with sk-ant- and are at least 20 characters.",
+        `${info.label} keys start with ${info.keyPrefix} and are at least 20 characters.`,
       );
       return;
     }
     setSaving(true);
     try {
-      await saveApiKey(trimmed);
-      setSavedMask(maskApiKey(trimmed));
+      await saveApiKey(trimmed, keyProvider);
+      setSavedMask(maskApiKey(trimmed, keyProvider));
       setDraftKey("");
     } finally {
       setSaving(false);
     }
-  }, [draftKey]);
+  }, [draftKey, keyProvider]);
 
   const handleClear = useCallback(() => {
     Alert.alert(
       "Remove API key",
-      "You will need to paste it again to generate lessons.",
+      "You will need to paste it again to generate with this provider.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Remove",
           style: "destructive",
           onPress: async () => {
-            await deleteApiKey();
+            await deleteApiKey(keyProvider);
             setSavedMask(null);
           },
         },
       ],
     );
-  }, []);
+  }, [keyProvider]);
 
   // Persist the global default immediately on each change.
   const handleParamsChange = useCallback((next: GenerationParams) => {
@@ -100,14 +111,34 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.labelRow}>
-        <Text style={styles.sectionLabel}>Anthropic API key</Text>
+        <Text style={styles.sectionLabel}>API keys (BYOK)</Text>
         <HelpButton topic="byok" label="BYOK" />
       </View>
       <Text style={styles.helpText}>
-        Your key is stored in the Android Keystore and sent directly to this
-        app's backend, which calls Anthropic on your behalf. It is never logged
-        or stored on any server.
+        Bring your own key per provider. Keys are stored in the Android Keystore
+        and sent directly to this app's backend, which calls the provider on your
+        behalf. They are never logged or stored on any server.
       </Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.providerRow}>
+        {PROVIDERS.map((p) => {
+          const selected = p.id === keyProvider;
+          return (
+            <Pressable
+              key={p.id}
+              onPress={() => setKeyProvider(p.id)}
+              style={[styles.providerChip, selected && styles.providerChipSelected]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              accessibilityLabel={`Manage ${p.label} key`}
+            >
+              <Text style={[styles.providerChipText, selected && styles.providerChipTextSelected]}>
+                {p.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       {savedMask ? (
         <View style={styles.savedKeyCard}>
@@ -131,7 +162,7 @@ export default function SettingsScreen() {
       <View style={styles.inputRow}>
         <TextInput
           style={styles.keyInput}
-          placeholder="sk-ant-..."
+          placeholder={providerInfo(keyProvider).keyHint}
           placeholderTextColor={colors.textMuted}
           value={draftKey}
           onChangeText={setDraftKey}
@@ -140,7 +171,7 @@ export default function SettingsScreen() {
           secureTextEntry
           returnKeyType="done"
           onSubmitEditing={handleSave}
-          accessibilityLabel="Paste Anthropic API key"
+          accessibilityLabel={`Paste ${providerInfo(keyProvider).label} API key`}
         />
         <Pressable
           style={[
@@ -192,6 +223,29 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   labelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  // Provider selector for the BYOK key section — same beveled white/yellow as the
+  // param chips (selected = yellow, unselected = white; black glyphs).
+  providerRow: { flexDirection: "row", gap: spacing.sm, paddingVertical: spacing.xs },
+  providerChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.tileOffFace,
+    borderWidth: 2,
+    borderTopColor: colors.tileOffFace,
+    borderLeftColor: colors.tileOffFace,
+    borderBottomColor: colors.tileOffShadow,
+    borderRightColor: colors.tileOffShadow,
+  },
+  providerChipSelected: {
+    backgroundColor: colors.tileOnFace,
+    borderTopColor: colors.tileOnLo,
+    borderLeftColor: colors.tileOnLo,
+    borderBottomColor: colors.tileOnHi,
+    borderRightColor: colors.tileOnHi,
+  },
+  providerChipText: { fontSize: typography.sizeSm, fontWeight: "600", color: colors.tileOffGlyph },
+  providerChipTextSelected: { color: colors.tileOnGlyph },
   // Brand lockup sits on a light card (the mark is designed for light backdrops),
   // shrink-wrapped and centered above the settings content.
   brandHeader: {

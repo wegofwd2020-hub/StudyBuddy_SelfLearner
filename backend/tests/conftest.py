@@ -62,3 +62,13 @@ def known_test_api_key() -> str:
     consistent target.
     """
     return "sk-ant-TEST_FAKE_KEY_for_leak_detection_DO_NOT_REPLACE_with_a_real_key_xxxxxxxx"
+
+
+@pytest.fixture
+def known_test_openai_key() -> str:
+    """A fake but plausibly-shaped OpenAI-compatible key (sk-, NOT sk-ant-).
+
+    NOT a real key. Used by multi-provider leak tests to assert the generic
+    `sk-…` redaction backstop catches non-Anthropic key formats too.
+    """
+    return "sk-TEST_FAKE_OPENAI_KEY_for_leak_detection_DO_NOT_REPLACE_xxxxxxxxxxxxxxxx"

@@ -54,19 +54,19 @@ describe("SettingsScreen", () => {
     saveApiKey.mockResolvedValue(undefined);
 
     render(<SettingsScreen />);
-    const input = screen.getByLabelText("Paste Anthropic API key");
+    const input = screen.getByLabelText("Paste Anthropic (Claude) API key");
     fireEvent.changeText(input, "sk-ant-FAKE_VALID_KEY_abcdef");
     fireEvent.press(screen.getByLabelText("Save API key"));
 
     await waitFor(() => {
-      expect(saveApiKey).toHaveBeenCalledWith("sk-ant-FAKE_VALID_KEY_abcdef");
+      expect(saveApiKey).toHaveBeenCalledWith("sk-ant-FAKE_VALID_KEY_abcdef", "anthropic");
     });
   });
 
   it("does not save a key that does not start with sk-ant-", async () => {
     loadApiKey.mockResolvedValue(null);
     render(<SettingsScreen />);
-    const input = screen.getByLabelText("Paste Anthropic API key");
+    const input = screen.getByLabelText("Paste Anthropic (Claude) API key");
     fireEvent.changeText(input, "not-a-valid-key-at-all-here");
     fireEvent.press(screen.getByLabelText("Save API key"));
 

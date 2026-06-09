@@ -21,7 +21,7 @@ from backend.src.generate.anthropic_caller import (
 
 
 def test_call_anthropic_success(known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         instance = MockProvider.return_value
         instance.generate.return_value = ('{"topic": "x"}', 100, 200)
 
@@ -37,7 +37,7 @@ def test_call_anthropic_success(known_test_api_key):
 
 
 def test_call_anthropic_passes_custom_max_tokens(known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         instance = MockProvider.return_value
         instance.generate.return_value = ('{"topic": "x"}', 1, 1)
 
@@ -62,7 +62,7 @@ def test_empty_api_key_rejected():
 def test_sdk_exception_translated_to_AnthropicCallError(known_test_api_key, capsys):
     """When the SDK raises, we re-raise our own exception with NO chained context.
     The original exception (which may stringify the api_key) must not appear."""
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         instance = MockProvider.return_value
         # Simulate an SDK exception that contains the api_key in its message.
         instance.generate.side_effect = RuntimeError(
@@ -84,7 +84,7 @@ def test_sdk_exception_translated_to_AnthropicCallError(known_test_api_key, caps
 
 
 def test_provider_constructor_failure(known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.side_effect = RuntimeError("boom")
 
         with pytest.raises(AnthropicCallError, match="Anthropic call failed"):

@@ -16,10 +16,22 @@ export interface LessonOutput {
 
 export type JobStatus = "queued" | "running" | "done" | "failed";
 
+// Which LLM + versions produced a generation (backend registry.provenance).
+// Stored on the saved unit so we can later detect content made with an outdated
+// model/integration and offer to regenerate.
+export interface Provenance {
+  provider: string;
+  model: string;
+  model_verified?: boolean;
+  integration_version?: number;
+  contract_version?: number;
+}
+
 export interface JobResponse {
   job_id: string;
   status: JobStatus;
   result?: LessonOutput;
+  provenance?: Provenance;
   error?: string;
 }
 
@@ -30,6 +42,10 @@ export interface GenerateRequest {
   language: string;
   format: "lesson";
   api_key: string;
+  // LLM selection (BYOK). Omitted = backend default (anthropic + its default
+  // model). The key in api_key must match the chosen provider's format.
+  provider_id?: string;
+  model?: string;
   depth?: "quick" | "standard" | "deep";
   // Diagram direction for this generation (conceptual ↔ technical). Omitted =
   // backend default ("balanced"). See types/generationParams.ts DiagramRegister.

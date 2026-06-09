@@ -34,7 +34,7 @@ async def test_duplicate_request_id_returns_same_job_id(client, known_test_api_k
     rid = str(uuid.uuid4())
 
     # Mock Anthropic to keep the test fast and avoid background-task races.
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (
             json.dumps(
                 {
@@ -64,7 +64,7 @@ async def test_duplicate_request_id_returns_same_job_id(client, known_test_api_k
 
 @pytest.mark.asyncio
 async def test_different_request_ids_get_different_job_ids(client, known_test_api_key):
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (
             json.dumps(
                 {
@@ -100,7 +100,7 @@ async def test_idempotency_does_not_re_call_anthropic(client, known_test_api_key
     AnthropicProvider call (the others short-circuit at the idempotency check)."""
     rid = str(uuid.uuid4())
 
-    with patch("backend.src.generate.anthropic_caller.AnthropicProvider") as MockProvider:
+    with patch("pipeline.providers.anthropic_adapter.AnthropicProvider") as MockProvider:
         MockProvider.return_value.generate.return_value = (
             json.dumps(
                 {

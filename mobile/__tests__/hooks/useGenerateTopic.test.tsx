@@ -19,6 +19,9 @@ const PARAMS: GenerationParams = {
   pages: 0,
   language: "en",
   format: "lesson",
+  diagramRegister: "balanced",
+  provider: "anthropic",
+  model: null,
 };
 
 const LESSON = {
@@ -40,22 +43,24 @@ beforeEach(() => {
 });
 
 describe("useGenerateTopic", () => {
-  it("generates one topic and resolves with the lesson, folding subtopics", async () => {
-    pollUntilDone.mockResolvedValue({ status: "done", result: LESSON });
+  it("generates one topic and resolves with the lesson + provenance, folding subtopics", async () => {
+    const prov = { provider: "anthropic", model: "claude-sonnet-4-6" };
+    pollUntilDone.mockResolvedValue({ status: "done", result: LESSON, provenance: prov });
 
     const { result } = renderHook(() => useGenerateTopic({ getApiKey, intervalMs: 1 }));
 
-    let lesson: unknown;
+    let out: unknown;
     await act(async () => {
-      lesson = await result.current.run({
+      out = await result.current.run({
         title: "Kinematics",
         subtopics: ["Speed", "Velocity"],
         params: PARAMS,
       });
     });
 
-    // Heading forced to the clean topic title (not the subtopic-folded prompt).
-    expect(lesson).toEqual({ ...LESSON, topic: "Kinematics" });
+    // Heading forced to the clean topic title (not the subtopic-folded prompt);
+    // provenance from the job is surfaced for the caller to persist.
+    expect(out).toEqual({ lesson: { ...LESSON, topic: "Kinematics" }, provenance: prov });
     expect(result.current.status).toBe("done");
     expect(submitGenerate).toHaveBeenCalledWith(
       expect.objectContaining({ topic: "Kinematics — covering: Speed, Velocity" }),

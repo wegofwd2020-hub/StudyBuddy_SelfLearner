@@ -31,6 +31,9 @@ const params = (pages = 0): GenerationParams => ({
   pages,
   language: "en",
   format: "lesson",
+  diagramRegister: "balanced",
+  provider: "anthropic",
+  model: null,
 });
 
 function toc(): StructuredTOC {
@@ -56,7 +59,8 @@ beforeEach(() => {
 
 describe("useGenerateAll", () => {
   it("generates every topic in order and reports them done", async () => {
-    pollUntilDone.mockResolvedValue({ status: "done", result: LESSON });
+    const prov = { provider: "anthropic", model: "claude-sonnet-4-6" };
+    pollUntilDone.mockResolvedValue({ status: "done", result: LESSON, provenance: prov });
     const onTopicDone = jest.fn();
 
     const { result } = renderHook(() =>
@@ -76,6 +80,7 @@ describe("useGenerateAll", () => {
       "t1",
       "Kinematics",
       expect.objectContaining({ ...LESSON, topic: "Kinematics" }),
+      prov,
     );
   });
 
@@ -202,6 +207,7 @@ describe("useGenerateAll", () => {
       "t1",
       "Kinematics",
       expect.objectContaining({ topic: "Kinematics" }),
+      undefined, // this test's mock job carries no provenance
     );
     expect(result.current.doneCount).toBe(2);
   });
