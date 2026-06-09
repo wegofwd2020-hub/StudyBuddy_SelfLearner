@@ -1,6 +1,6 @@
 # ADR-013 — Pramana in-process generation (amends ADR-011)
 
-**Status:** Proposed — 2026-06-09 (awaiting decision)
+**Status:** Accepted — 2026-06-09
 **Decision-maker:** Sivakumar Mambakkam / WeGoFwd
 **Amends:** **ADR-011** §3.1 and §8 — *"Pramana never generates content"* is
 **narrowed**, not deleted. Pramana may generate a defined class of **text-first
