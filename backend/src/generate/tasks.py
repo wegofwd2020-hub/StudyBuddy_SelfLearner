@@ -27,7 +27,6 @@ import uuid
 from typing import Any
 
 import redis.asyncio as redis
-from pipeline.providers.anthropic_adapter import AnthropicAdapter
 from pipeline.providers.conformance import generate_validated
 from pipeline.providers.contract import LLMRequest
 from pipeline.providers.errors import LLMError, LLMSchemaError
@@ -212,16 +211,16 @@ async def run_generation(
         return LessonOutput.model_validate(parse_json_response(text))
 
     try:
-        # Anthropic stays on the legacy adapter (prompt-embedded JSON) for parity;
-        # tool-use is Phase 4. Other providers come from the registry factory
-        # (OpenAI-compatible, JSON via response_format). response_format="json" is
-        # a hint the OpenAI provider honours and the adapter ignores.
-        if provider_id == "anthropic":
-            provider = AnthropicAdapter(
-                api_key=api_key, model=model or settings.anthropic_default_model
-            )
-        else:
-            provider = build_provider(provider_id, api_key=api_key, model=model)
+        # All providers come from the registry factory: anthropic resolves to the
+        # tool-use AnthropicNativeProvider (Phase 4 — reliable JSON via a forced
+        # tool call), others to the OpenAI-compatible client. response_format="json"
+        # drives tool-use for anthropic and json_object for the OpenAI providers.
+        # Preserve the settings-based default model for anthropic (the registry
+        # default is a fixed string).
+        resolved_model = model
+        if provider_id == "anthropic" and not resolved_model:
+            resolved_model = settings.anthropic_default_model
+        provider = build_provider(provider_id, api_key=api_key, model=resolved_model)
         req = LLMRequest(prompt=prompt, max_tokens=max_tokens, response_format="json")
         # Sync loop in a thread so we don't block the event loop.
         result = await asyncio.to_thread(
