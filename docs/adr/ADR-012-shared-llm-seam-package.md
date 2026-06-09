@@ -156,6 +156,47 @@ generates — a *distinct class* of compliance content Mentible never produced
 It must be resolved in an **amendment to ADR-011** before Pramana's generation path
 is built. ADR-012 only makes the *mechanism* shared; it does not authorise scope.
 
+### D8 — `llm-seam` is a shared **library**, not a network service
+
+This decision shares **code**, not a running server. `llm-seam` is a Python
+package each consumer `pip install`s and runs **in its own process** — like
+`requests` or `httpx`, not like a microservice the apps call over HTTP/RPC.
+
+```
+            ┌──────────────── llm-seam (a package — just code) ──────────────────┐
+            │  contract · registry · conformance · providers                     │
+            └────────────────────────────────────────────────────────────────────┘
+                 ▲  pip install (in-process)   ▲                     ▲
+        ┌────────┴────────┐         ┌──────────┴───────┐     ┌───────┴─────────┐
+        │ Mentible backend│         │ OnDemand pipeline│     │ Pramana backend │
+        │  BYOK key       │         │  managed key     │     │  managed key    │
+        └────────┬────────┘         └────────┬─────────┘     └────────┬────────┘
+                 └──── each makes its OWN direct call to Anthropic/Groq/… ───────┘
+```
+
+Each app calls `build_provider(...).generate(req)` inside itself; the outbound
+call to the vendor is made by **that app's own process, with that app's own key**.
+There is no `llm-seam` server to deploy, scale, monitor, or keep up.
+
+Why this is the right model, not a shared service:
+
+| | Shared **library** (this ADR) | Shared **service** (rejected) |
+|---|---|---|
+| Deploy | nothing new — code in each app | a new server to run/scale/secure 24/7 |
+| Keys | each app holds its own (D3: caller passes the key) | a central store of *everyone's* keys — a honeypot that **breaks ADR-001** |
+| Failure | no new failure point | down → all three apps cannot generate |
+| Latency | none added | an extra network hop per call |
+| Upgrades | each app **pins** a version, moves when ready (preserves ADR-002 decoupling) | one global rollout, no opt-out |
+
+A central, key-holding service would put the transient BYOK key (ADR-001) and the
+managed vault keys (ADR-005) in one externally-reachable place — exactly what both
+ADRs forbid. The library model keeps every key inside the process that owns it.
+
+> **Not in scope of this "library" framing:** the **Mentible ↔ Pramana** link is
+> still a genuine *service* call — an **artifact** exchange over HTTP (ADR-011,
+> `mentible_client`). That is products handing finished packages to each other; it
+> is unrelated to how they share the LLM *code* (this ADR). Don't conflate the two.
+
 ---
 
 ## Migration plan
