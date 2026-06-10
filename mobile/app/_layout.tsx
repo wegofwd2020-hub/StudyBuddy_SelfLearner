@@ -64,6 +64,13 @@ export default function RootLayout() {
             headerBackTitle: "Library",
           }}
         />
+        <Stack.Screen
+          name="book/reviews/[id]"
+          options={{
+            title: "Reviews",
+            headerBackTitle: "Library",
+          }}
+        />
       </Stack>
       <OnboardingModal />
     </>
