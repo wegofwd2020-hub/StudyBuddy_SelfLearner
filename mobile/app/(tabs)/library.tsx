@@ -3,6 +3,8 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteEpub, listEpubs, openEpub, saveEpub, type EpubMeta } from "@/storage/epubLibrary";
+import { reviewCounts } from "@/storage/reviewStore";
+import { maybeSeedReviews } from "@/storage/seedReviews";
 import { pickEpubFile } from "@/storage/pickBookFile";
 import { extractEpubCover } from "@/storage/epubCover";
 import { BookCover } from "@/components/BookCover";
@@ -43,6 +45,7 @@ function mimeForExt(ext: string): string {
 export default function LibraryScreen() {
   const router = useRouter();
   const [items, setItems] = useState<EpubMeta[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isDesktop } = useResponsive();
@@ -50,8 +53,17 @@ export default function LibraryScreen() {
 
   const reload = useCallback(() => {
     listEpubs()
-      .then(setItems)
-      .catch(() => setItems([]));
+      .then(async (list) => {
+        setItems(list);
+        // Seed the demo review on first sight of the Product Sense book (no-op
+        // for every other book), then read counts for the grid badges.
+        await Promise.all(list.map((m) => maybeSeedReviews(m.id)));
+        setCounts(await reviewCounts(list.map((m) => m.id)));
+      })
+      .catch(() => {
+        setItems([]);
+        setCounts({});
+      });
   }, []);
 
   useFocusEffect(useCallback(() => reload(), [reload]));
@@ -102,6 +114,13 @@ export default function LibraryScreen() {
       } else {
         router.push(`/book/read/${item.id}`);
       }
+    },
+    [router],
+  );
+
+  const openReviews = useCallback(
+    (item: EpubMeta) => {
+      router.push(`/book/reviews/${item.id}?title=${encodeURIComponent(item.title)}`);
     },
     [router],
   );
@@ -172,6 +191,18 @@ export default function LibraryScreen() {
               {formatSize(item.sizeBytes)} · {formatDate(item.compiledAt)}
             </Text>
             <Pressable
+              onPress={() => openReviews(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Reviews for ${item.title}${
+                counts[item.id] ? ` (${counts[item.id]})` : ""
+              }`}
+              hitSlop={8}
+              style={styles.reviewsChip}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={15} color={colors.textSecondary} />
+              {counts[item.id] ? <Text style={styles.reviewsCount}>{counts[item.id]}</Text> : null}
+            </Pressable>
+            <Pressable
               onPress={() => handleDelete(item.id)}
               accessibilityRole="button"
               accessibilityLabel={`Delete from library: ${item.title}`}
@@ -196,6 +227,8 @@ const styles = StyleSheet.create({
   tileTitle: { fontSize: typography.sizeSm, fontWeight: "700", color: colors.text },
   tileFooter: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   tileMeta: { flex: 1, fontSize: typography.sizeXs, color: colors.textMuted },
+  reviewsChip: { flexDirection: "row", alignItems: "center", gap: 2 },
+  reviewsCount: { fontSize: typography.sizeXs, fontWeight: "700", color: colors.textSecondary },
   importBtn: {
     flexDirection: "row",
     alignItems: "center",
