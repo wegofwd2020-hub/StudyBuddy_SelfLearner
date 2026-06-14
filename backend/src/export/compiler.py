@@ -20,6 +20,7 @@ import json
 from typing import NamedTuple
 
 from backend.config import settings
+from backend.src.core.format_scan import book_warnings
 from backend.src.core.log_redaction import get_logger
 
 log = get_logger("export")
@@ -36,6 +37,10 @@ class CompilerError(Exception):
 class ExportResult(NamedTuple):
     data: bytes  # the compiled artifact (EPUB or PDF bytes)
     title: str
+    # Gate 3 (format-drift) warnings over the whole book's generated content.
+    # Non-fatal — a book with warnings still compiles; the count is surfaced to
+    # the client as a header and logged as a review / prompt-drift signal.
+    warnings: list[dict]
 
 
 def validate_book(raw: bytes) -> dict:
@@ -71,6 +76,20 @@ async def compile_book(
     ExportValidationError for bad input, CompilerError otherwise.
     """
     book = validate_book(raw_book)
+
+    # Gate 3 — format-drift scan over the whole book's generated content (lesson +
+    # tutorial + experiment). Non-fatal: never blocks a compile. This is the only
+    # place tutorial/experiment content meets gate 3 (native generation emits only
+    # lessons, already checked by the worker). See docs/QUALITY_GATES.md §1 gate 3.
+    warnings = book_warnings(book)
+    if warnings:
+        log.warning(
+            "format_warnings",
+            surface="export",
+            count=len(warnings),
+            rules=sorted({w.get("rule", "") for w in warnings}),
+            topics=len({w.get("topic_id") for w in warnings}),
+        )
 
     argv = [settings.node_bin, settings.compiler_cli, "-", "-o", "-", "--format", fmt]
     if diagrams:
@@ -117,5 +136,6 @@ async def compile_book(
         title_len=len(book["title"]),
         subjects=len(book["toc"]["subjects"]),
         out_bytes=len(stdout),
+        warnings=len(warnings),
     )
-    return ExportResult(data=stdout, title=book["title"])
+    return ExportResult(data=stdout, title=book["title"], warnings=warnings)

@@ -74,11 +74,13 @@ def test_validate_book_rejects_bad_input(raw, needle):
 
 
 # ── endpoint with the compiler mocked ────────────────────────────────────────
-def _fake_compile(record: dict):
+def _fake_compile(record: dict, warnings: list[dict] | None = None):
     async def fake(raw: bytes, *, fmt: str = "epub", diagrams: bool = False) -> ExportResult:
         record["fmt"] = fmt
         record["diagrams"] = diagrams
-        return ExportResult(data=b"%PDF-or-PK-bytes", title="Physics & Friends")
+        return ExportResult(
+            data=b"%PDF-or-PK-bytes", title="Physics & Friends", warnings=warnings or []
+        )
 
     return fake
 
@@ -91,7 +93,19 @@ async def test_export_epub_by_default(client, monkeypatch):
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("application/epub+zip")
     assert resp.headers["content-disposition"] == 'attachment; filename="physics-friends.epub"'
+    # Gate 3: a clean book reports zero format-drift warnings on the header.
+    assert resp.headers["x-content-warnings"] == "0"
     assert rec == {"fmt": "epub", "diagrams": False}
+
+
+async def test_export_surfaces_format_warning_count_header(client, monkeypatch):
+    rec: dict = {}
+    drift = [{"rule": "expected_table", "topic_id": "u1"}, {"rule": "expected_formula"}]
+    monkeypatch.setattr(compiler, "compile_book", _fake_compile(rec, warnings=drift))
+
+    resp = await client.post("/api/v1/export", content=json.dumps(_BOOK))
+    assert resp.status_code == 200
+    assert resp.headers["x-content-warnings"] == "2"
 
 
 async def test_export_pdf_with_diagrams(client, monkeypatch):
@@ -122,7 +136,7 @@ async def test_export_rejects_unknown_format(client, monkeypatch):
     async def fake(raw, *, fmt="epub", diagrams=False):
         nonlocal called
         called = True
-        return ExportResult(data=b"", title="x")
+        return ExportResult(data=b"", title="x", warnings=[])
 
     monkeypatch.setattr(compiler, "compile_book", fake)
 
@@ -161,7 +175,7 @@ async def test_export_rejects_oversized_body(client, monkeypatch):
     async def fake(raw, *, fmt="epub", diagrams=False):
         nonlocal called
         called = True
-        return ExportResult(data=b"", title="x")
+        return ExportResult(data=b"", title="x", warnings=[])
 
     monkeypatch.setattr(compiler, "compile_book", fake)
 

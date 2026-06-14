@@ -81,5 +81,11 @@ async def export_book(
     return Response(
         content=result.data,
         media_type=media_type,
-        headers={"Content-Disposition": f'attachment; filename="{_filename(result.title, ext)}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{_filename(result.title, ext)}"',
+            # Gate 3: count of non-fatal format-drift warnings over the book's
+            # content (0 when clean). A review / prompt-drift signal the client
+            # can surface without parsing the artifact. Details are logged.
+            "X-Content-Warnings": str(len(result.warnings)),
+        },
     )
