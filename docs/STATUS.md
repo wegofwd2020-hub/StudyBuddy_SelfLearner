@@ -147,15 +147,15 @@ still the main thing that hasn't been *proven* end-to-end.
 | 011 | Mentible⇄Pramana consumable handoff | Proposed (amended by 013) |
 | 012 | Shared `wegofwd-llm` LLM seam | Accepted |
 | 013 | Pramana in-process generation | Accepted |
+| 014 | User accounts + per-provider credential set | Proposed |
 
 ---
 
 ## Not yet done
 
 ### In flight (drafted, not yet on `main`)
-- **ADR-014 — user accounts + per-provider credential set** (Proposed) lives on an
-  unmerged branch. A **Content Trust Manifest** (ADR-015) + trust-badge UI is
-  untracked WIP in the tree, not committed.
+- A **Content Trust Manifest** (ADR-015) + trust-badge UI is untracked WIP in the
+  tree, not committed. (ADR-014 — user accounts — is now merged; see the ledger.)
 
 ### Managed identity & billing (ADR-005 pulled these to MVP)
 - Accounts/auth (email + Google/Apple), per-user usage metering, plan caps, the
