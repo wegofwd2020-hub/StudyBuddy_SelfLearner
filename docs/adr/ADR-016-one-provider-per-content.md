@@ -1,4 +1,4 @@
-# ADR-016 — One provider per piece of content (no ensemble); explicit fallback + compare
+# ADR-016 — One provider per piece of content; explicit fallback, compare, and visible provenance
 
 **Status:** Proposed — 2026-06-11
 **Decision-maker:** Sivakumar Mambakkam
@@ -6,10 +6,12 @@
 *many* providers serve one piece of content, which ADR-005 left open). **ADR-006**
 (a Mentible book is one coherent, opinionated artifact — "not a chatbot", "not a
 playground"). **ADR-014** (per-provider credential set — a user holds N keys; this
-ADR governs how many are used per generation). **ADR-012** (result provenance).
-
-> ADR-015 is reserved by separate in-flight work (content-trust manifest); this
-> decision takes the next free number.
+ADR governs how many are used per generation). **ADR-012** (result provenance —
+`provenance() → {provider, model, model_verified, integration_version,
+contract_version}`). **ADR-015** (Content Trust Manifest / `TrustBadge` — the
+display surface this ADR's provenance indicator rides on; D6/D7 set *what* it must
+show, ADR-015 owns *how* it renders + the export attachment). **ADR-008**
+(watermarking / export colophon — where provenance lands in the exported book).
 
 ---
 
@@ -46,6 +48,19 @@ Three product facts make ensemble-by-default the wrong default:
   "experimental, conformance TBD", so parallel runs surface inconsistent schema
   conformance and messy partial failures. Mixed provenance also muddies the trust
   signal and the cross-device regenerate story (ADR-014).
+
+There is a flip side to allowing providers to vary per scope (D2), per actual
+execution (D3 fallback), and per kept result (D4 compare): **the model behind any
+given chapter can legitimately differ within one book and drift over time.** That is
+only acceptable if it is *legible* — the user must be able to see which LLM (and which
+version) produced a given piece of content, and which version of the content they are
+looking at. The data already exists — `Provenance {provider, model, model_verified,
+integration_version, contract_version}` is stamped per generation
+(`mobile/src/types/lesson.ts`) and stored per topic with `generatedAt`
+(`mobile/src/types/book.ts`), and books already carry `version` + `revisionHistory` —
+it is simply not yet surfaced. The in-flight **Content Trust Manifest** (ADR-015,
+`TrustBadge`; `JobResponse.trust`) is the natural surface; this ADR makes the display
+a *requirement* of the multi-provider policy and pins down what it must show.
 
 ## Decision
 
@@ -84,15 +99,52 @@ The Settings/generation provider control is **single-select** (which provider's 
 to manage; the active/default provider). It must **not** offer a "use all providers"
 multi-select for generation — that footgun is precisely what D1 forbids.
 
+### D6 — Provenance is visible, per unit, not just stored
+
+Every generated unit (topic/chapter) carries a **user-visible indicator** of the LLM
+that produced it. Because the provider can differ per topic (D2), per actual execution
+(D3), and per kept result (D4), the indicator is **per unit**, not per book — a book
+may legitimately show mixed provenance. It appears both **in-app** (on the topic/read
+screen) and in the **exported book** (colophon / per-chapter, via ADR-008 watermarking
++ ADR-007 front/back matter). The rendering surface is the Content Trust Manifest /
+`TrustBadge` (ADR-015) — this ADR does **not** introduce a second badge; it specifies
+the provenance content that surface must carry.
+
+### D7 — What the indicator shows: LLM identity, LLM version, and content version
+
+Sourced from the already-stored `Provenance` + book/topic metadata — no new generation
+data is required:
+
+- **LLM identity** (always visible): provider + model, human-readable —
+  e.g. "Anthropic · Claude Sonnet 4.6". From `provenance.{provider, model}`.
+- **LLM version** (on expand): the concrete `model`, plus `model_verified`,
+  `integration_version`, `contract_version` (ADR-012). These drive the
+  **staleness affordance** — if the unit's `integration_version`/model is older than
+  the registry's current default, show a quiet "made with an older model — regenerate?"
+  hint (the use ADR-012 provenance was designed for).
+- **Content version** (always visible): the unit's `generatedAt` and a monotonic
+  regeneration count; rolled up by the book's existing `version` + `revisionHistory`
+  (`mobile/src/types/book.ts`). **Any** regeneration — including a D3 fallback or a D4
+  compare-keep — bumps the unit's content version and re-stamps provenance, so the
+  pair (content version ↔ LLM that produced it) is always consistent.
+
+Provenance is **descriptive, never a guarantee of correctness** — copy must avoid
+implying the content is verified or endorsed by the named provider (Content Rule /
+trust-claim discipline; coordinate exact wording with ADR-015).
+
 ## Consequences
 
-**Positive:** predictable BYOK cost; coherent single-voice books; clean per-artifact
-provenance and trust; no judge/merge agent to build or pay for; matches the current
-pinned-provider implementation, so D1/D2 are largely codification.
+**Positive:** predictable BYOK cost; coherent single-voice books; no judge/merge agent
+to build or pay for; matches the current pinned-provider implementation, so D1/D2 are
+largely codification. Mixed-provenance books (the price of D2/D3/D4) are made
+**legible** by D6/D7 rather than confusing, and the provenance data needed is already
+captured — D6/D7 are surfacing, not new instrumentation.
 
 **Negative / trade-offs:** no automatic "best of N" quality lift — a user who wants
 to compare models must use the Power-Mode compare (D4) or regenerate and choose. Per-
-topic provider choice (D2) and the compare flow (D4) are net-new UI work.
+topic provider choice (D2), the compare flow (D4), and the provenance/staleness UI
+(D6/D7) are net-new UI work. D6/D7 must be **coordinated with ADR-015** so there is a
+single trust/provenance badge, not two competing ones.
 
 **Migration:** additive. D1/D2 reflect today's behaviour; D3 (explicit fallback) and
 D4 (compare) are future, opt-in additions.
