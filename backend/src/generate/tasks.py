@@ -91,9 +91,7 @@ def _format_warnings(lesson: LessonOutput) -> list[dict[str, Any]]:
     """
     try:
         adapted = {
-            "sections": [
-                {"title": s.heading, "content": s.body_markdown} for s in lesson.sections
-            ]
+            "sections": [{"title": s.heading, "content": s.body_markdown} for s in lesson.sections]
         }
         return [
             {**w.as_dict(), "content_type": "lesson"} for w in check_content("tutorial", adapted)
