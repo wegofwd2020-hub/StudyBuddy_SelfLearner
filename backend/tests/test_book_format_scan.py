@@ -112,7 +112,11 @@ def test_package_warnings_flags_module_drift_and_tags_module():
 def test_package_warnings_clean_manifest():
     manifest = {
         "modules": [
-            {"order": 0, "heading": "Balance Sheet", "body_markdown": "| A | B |\n|---|---|\n| 1 | 2 |"}
+            {
+                "order": 0,
+                "heading": "Balance Sheet",
+                "body_markdown": "| A | B |\n|---|---|\n| 1 | 2 |",
+            }
         ]
     }
     assert package_warnings(manifest) == []
