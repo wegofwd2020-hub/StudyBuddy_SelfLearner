@@ -33,20 +33,20 @@ export default function RootLayout() {
           name="book/new"
           options={{
             title: "New book",
-            headerBackTitle: "Books",
+            headerBackTitle: "Studio",
           }}
         />
         <Stack.Screen
           name="book/saved/[id]"
           options={{
             title: "Edit book",
-            headerBackTitle: "Books",
+            headerBackTitle: "Studio",
           }}
         />
         <Stack.Screen
           name="book/generate/[id]"
           options={{
-            title: "Generate topics",
+            title: "Write topics",
             headerBackTitle: "Back",
           }}
         />
