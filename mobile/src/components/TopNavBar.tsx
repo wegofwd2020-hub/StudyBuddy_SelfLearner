@@ -4,17 +4,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { colors, radius, spacing, typography } from "@/constants/theme";
+import { NAV } from "@/constants/labels";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
 // route name → label + active/inactive icon. The app launches on Library;
-// `index` is a redirect-to-Library route (not shown).
+// `index` is a redirect-to-Library route (not shown). Labels come from the
+// shared NAV vocabulary; the `books` route now reads as "Studio" (authoring).
 const TABS: Record<string, { label: string; active: IconName; inactive: IconName }> = {
-  library: { label: "Library", active: "bookmarks", inactive: "bookmarks-outline" },
-  books: { label: "Books", active: "book", inactive: "book-outline" },
-  settings: { label: "Settings", active: "settings", inactive: "settings-outline" },
-  help: { label: "Help", active: "help-circle", inactive: "help-circle-outline" },
-  about: { label: "About", active: "information-circle", inactive: "information-circle-outline" },
+  library: { label: NAV.library, active: "library", inactive: "library-outline" },
+  books: { label: NAV.studio, active: "create", inactive: "create-outline" },
+  settings: { label: NAV.settings, active: "settings", inactive: "settings-outline" },
+  help: { label: NAV.help, active: "help-circle", inactive: "help-circle-outline" },
+  about: { label: NAV.about, active: "information-circle", inactive: "information-circle-outline" },
 };
 
 // Visual left→right order of the menu. Library is first (and the landing); the
