@@ -1,5 +1,8 @@
 // Mentible UI theme tokens.
 //
+// (Platform is used only by the typography block below, for web-vs-native fonts.)
+import { Platform } from "react-native";
+
 // Colours derive from the brand mark ("growing mind"): indigo = mind,
 // green = growth, red-orange = the "M" / primary action, teal = the book.
 // See docs/adr/ADR-006 (brand) and docs/adr/ADR-007 (book template palette);
@@ -75,14 +78,28 @@ export const radius = {
 } as const;
 
 export const typography = {
-  // Font stacks. The serif headings tie the app to the book output (Source Serif
-  // 4); the sans keeps UI chrome legible; mono is for the BYOK key field + code.
-  // On web (react-native-web) these resolve as CSS font stacks. On native, RN
-  // takes the first name and falls back to the system font if it is not bundled —
-  // bundling Source Serif 4 / Inter for native via expo-font is a follow-up.
-  fontHeading: "'Source Serif 4', 'Iowan Old Style', Georgia, serif",
-  fontBody: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-  fontMono: "'JetBrains Mono', 'SF Mono', 'IBM Plex Mono', Menlo, monospace",
+  // Fonts. The serif headings tie the app to the book output (Source Serif 4);
+  // the sans keeps UI chrome legible; mono is for the BYOK key field + code.
+  //
+  // Web (react-native-web) resolves a CSS font *stack*. React Native on native
+  // does NOT parse a comma-separated stack — it treats the whole string as one
+  // family name — so native gets a single built-in family instead, until Source
+  // Serif 4 / Inter are bundled via expo-font (follow-up). `undefined` = system
+  // default. This keeps the mono key/code preview actually monospace on device.
+  fontHeading: Platform.select({
+    web: "'Source Serif 4', 'Iowan Old Style', Georgia, serif",
+    ios: "Georgia", // built-in serif
+    default: "serif", // Android built-in serif alias
+  }),
+  fontBody: Platform.select({
+    web: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    default: undefined, // system sans on native until Inter is bundled
+  }),
+  fontMono: Platform.select({
+    web: "'JetBrains Mono', 'SF Mono', 'IBM Plex Mono', Menlo, monospace",
+    ios: "Menlo", // built-in monospace
+    default: "monospace", // Android built-in monospace
+  }),
 
   sizeXs: 12,
   sizeSm: 14,
