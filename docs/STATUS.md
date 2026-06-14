@@ -1,7 +1,7 @@
 # Project Status — StudyBuddy Q
 
-> **Last updated:** 2026-05-26
-> **Branch:** `feat/mobile-skeleton`
+> **Last updated:** 2026-06-14
+> **Branch:** `feat/mobile-skeleton` *(gate-3 work merged to `main` — PRs #98–#100)*
 > A running record of what's actually built, versus the plan in `MVP_v1.md`.
 > The plan says what we're building first; this doc says what's done.
 
@@ -74,6 +74,52 @@ End-to-end flow works: **paste TOC → structure → edit tree → generate all 
 - **PR-2 (#10) — mobile topic-tree editor:** `Books` tab, `useStructureJob`, local `bookStore`, `TopicTreeEditor` (edit/add/remove/reorder), new-book + saved-book screens. 21 tests.
 - **PR-3 (#11) — generate-all loop:** client-orchestrated batch over `/generate` (no backend change), per-topic content saved on the book, skip-already-done, cancellable, per-topic viewer reusing `LessonRenderer`. 13 tests.
 - Backend suite green (62 incl. structure); mobile suite green (56 / 10 suites).
+
+### Quality & Compliance Gates — Gate 3 (format-drift) wired ✅ (PRs #98–#100)
+The format-drift validator (`pipeline/content_format_validator.py`) was vendored
+but **unwired** — nothing called it. It now runs across every content surface via
+one shared, tested helper. See `docs/QUALITY_GATES.md` for the full gate inventory.
+- **`backend/src/core/format_scan.py`** — single source of truth: `lesson_warnings`
+  / `book_warnings` / `package_warnings`. Adapts a lesson's `{heading,
+  body_markdown}` to the validator's tutorial shape without editing the vendored
+  file (ADR-002). Pure + defensive (malformed input → `[]`; never fails a job/compile).
+- **PR #98 — lesson worker:** gate 3 runs after schema validation in
+  `generate/tasks.py`; warnings ride on the job status row + a per-provider
+  `format_warnings` log line (the multi-provider consistency metric).
+- **PR #99 — whole-book export:** `book_warnings` scans every topic's lesson +
+  **tutorial + experiment** in `export/compiler.py` (the only place migrated/
+  authored tutorial/experiment content meets gate 3); count surfaced on the
+  `X-Content-Warnings` response header.
+- **PR #100 — Pramana hook (staged):** `package_warnings` over an ADR-011 manifest's
+  `modules[]`, ready for a single pre-sign call once the package builder exists
+  (ADR-011 still Proposed — no builder yet). ADR-011 §4 documents the hook.
+- Tests: `test_format_warnings.py`, `test_book_format_scan.py`, export header
+  assertions. All three PRs merged to `main` in order; CI green (lint + tests incl.
+  the mandatory no-key-in-logs gate). `/structure` is intentionally not covered (TOC
+  tree = headings only, no prose body to check).
+
+### Mobile — brand-aligned UI themes + nav vocabulary ✅ (PR #101)
+Aligns the app UI with the "growing mind" mark (ADR-006) and the book-output
+palette (ADR-007). UI tokens + nav + labels only — no behavioural change.
+- **`src/constants/theme.ts`** — retuned the default **Study (dark)** palette onto
+  the mark (brand indigo primary, red-orange "M" accent, new **growth-green**
+  token); retired the saturated **yellow** active tile (read close to the
+  "For Dummies" anti-pattern) for brand orange. Filled the previously `undefined`
+  font tokens (serif headings / sans body / mono key-field) — **web** resolves a
+  CSS stack, **native** gets a single built-in family via `Platform.select` (so
+  the mono key/code preview stays monospace on device; the comment that RN "takes
+  the first name" of a stack was wrong and is fixed). Added additive
+  **`manuscriptColors`** (light) + **`readingColors`** (sepia) palettes + a
+  `themes` registry for a future switcher (no consumer yet).
+- **`src/constants/labels.ts`** (new) — single source of truth for authoring
+  vocabulary (`NAV` / `FLOW` / `JOB_STATE`) in the ADR-006 voice (verbs of
+  authorship/publishing, never "prompt/chat/AI"). Only `NAV` is wired so far.
+- **Nav** — `books` tab relabelled **Studio** (route unchanged), refreshed icons,
+  back-titles updated (`TopNavBar`, root `_layout`).
+- Not in CI (mobile has no CI job); type-checked locally — no new tsc errors.
+- Follow-ups: wire `FLOW` (Outline/Publish) + sprout→leaf `JOB_STATE` icons; a
+  `ThemeProvider` to switch palettes; bundle Source Serif 4 / Inter for native via
+  `expo-font`.
 
 ---
 
