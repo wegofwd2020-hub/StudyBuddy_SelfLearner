@@ -13,7 +13,9 @@ import { loadApiKey } from "@/secure/keyStore";
 import { TopicRenderer } from "@/components/LessonRenderer";
 import { TrustBadge } from "@/components/TrustBadge";
 import { trustManifestFromTopic } from "@/lib/topicTrust";
+import { isUnitStale } from "@/lib/staleness";
 import { useGenerateTopic } from "@/hooks/useGenerateTopic";
+import { useCurrentProvenance } from "@/hooks/useCurrentProvenance";
 import { DEFAULT_GENERATION_PARAMS } from "@/types/generationParams";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import type { Book, GeneratedTopic } from "@/types/book";
@@ -70,6 +72,14 @@ export default function BookTopicScreen() {
   const getApiKey = useCallback(() => loadApiKey(book?.generationParams?.provider), [book]);
   const { status, error, run } = useGenerateTopic({ getApiKey });
   const regenerating = status === "generating";
+
+  // Current provenance for the book's pinned LLM config (ADR-016 D7 staleness).
+  // Hook must run before any early return; provider/model default sensibly while
+  // the book loads, then re-fetch for the real config. undefined ⇒ no hint.
+  const current = useCurrentProvenance(
+    book?.generationParams?.provider ?? "anthropic",
+    book?.generationParams?.model ?? null,
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -142,6 +152,8 @@ export default function BookTopicScreen() {
   // book may legitimately show mixed provenance). Built from the topic's stored
   // provenance/generatedAt; null (badge omitted) when there's nothing to show.
   const trustManifest = topic ? trustManifestFromTopic(topic) : null;
+  // undefined while current provenance is loading / on fetch failure ⇒ no hint.
+  const stale = isUnitStale(topic?.provenance, current);
 
   return (
     <View style={styles.screen}>
@@ -213,7 +225,11 @@ export default function BookTopicScreen() {
 
       {trustManifest && (
         <View style={styles.trust}>
-          <TrustBadge manifest={trustManifest} revisionCount={topic?.revisionCount} />
+          <TrustBadge
+            manifest={trustManifest}
+            revisionCount={topic?.revisionCount}
+            isStale={stale}
+          />
         </View>
       )}
 

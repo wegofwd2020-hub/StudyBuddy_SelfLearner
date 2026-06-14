@@ -19,7 +19,8 @@ import json
 import uuid
 
 import redis.asyncio as redis
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from wegofwd_llm.registry import PROVIDER_REGISTRY, provenance
 
 from backend.config import settings
 from backend.src.core.byok_envelope import encrypt_api_key, parse_master_key
@@ -161,6 +162,30 @@ async def submit_generate(
     )
 
     return GenerateResponse(job_id=job_id, status="queued")
+
+
+@router.get("/registry/current")
+async def registry_current(
+    response: Response,
+    provider: str = "anthropic",
+    model: str | None = None,
+) -> dict:
+    """Current resolved provenance for a book's LLM config — the pin-or-default
+    model plus the version axes (`integration_version`, `contract_version`).
+
+    Lets the client diff a stored unit's provenance against what's current and
+    flag stale content (ADR-016 D7 / SBQ-TRUST-004). Pass the book's pinned
+    `generationParams.model` as `model` so the returned `model` reflects the pin;
+    omit it for the provider default. Key-free public registry metadata — no BYOK
+    key, no generation. 404 on an unknown provider (never a silent default)."""
+    if provider not in PROVIDER_REGISTRY:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"unknown provider {provider!r}",
+        )
+    # The registry changes only on deploy → safe to cache for an hour.
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return provenance(provider, model)
 
 
 @router.get(
