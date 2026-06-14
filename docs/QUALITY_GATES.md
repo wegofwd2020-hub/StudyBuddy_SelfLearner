@@ -25,7 +25,7 @@ approval → lifecycle. **Status** is honest about what is *wired* vs *specced*.
 |---|------|------------------|----------|--------|
 | 1 | **Schema validation + repair** | Every model response is parsed and validated against the output schema; on failure the `generate_validated` conformance loop repairs up to `max_repairs`, then fails the job. Transport errors (timeout/refusal) fail fast — they are not schema failures. | `wegofwd_llm.conformance.generate_validated`; wired at `backend/src/generate/tasks.py` | **Active** |
 | 2 | **Generation provenance** | Each result is stamped with `provider`, `model` (+ config fingerprint/versions) so we always know *which LLM under which config* produced it. | `wegofwd_llm.registry.provenance(...)`; stamped onto the result payload in `tasks.py`; `pipeline/providers/config.py` resolves the effective per-book/per-level choice | **Active** |
-| 3 | **Format-drift heuristics** | Sections whose title is tabular-by-nature (Balance Sheet, truth table…) must contain a GFM table; formula sections must contain KaTeX. Non-fatal warnings → review queue / early prompt-drift signal. | `pipeline/content_format_validator.py`, wired at `backend/src/generate/tasks.py` (`_format_warnings`); warnings ride on the job status row | **Active** |
+| 3 | **Format-drift heuristics** | Sections whose title is tabular-by-nature (Balance Sheet, truth table…) must contain a GFM table; formula sections must contain KaTeX. Non-fatal warnings → review queue / early prompt-drift signal. | `pipeline/content_format_validator.py` via the shared `backend/src/core/format_scan.py`. Wired at **(a)** the lesson worker `generate/tasks.py` (warnings on the job status row) and **(b)** the export compiler `export/compiler.py` (`book_warnings` over the whole book — lesson + tutorial + experiment — surfaced as the `X-Content-Warnings` header + a log line) | **Active** |
 | 4 | **Traceability / citations** | Every claim cited to a source clause; `source_definitions` + per-module `citations`; `every_claim_cited` constraint on the Package Request. | ADR-011 §4 (Consumable Package manifest) | **Spec** (Pramana handoff) |
 | 5 | **Integrity / tamper-evidence** | `content_hash` + `signature` on the package, verified on ingest; mismatch → quarantine, never silently published. | ADR-011 §6 | **Spec** (Pramana handoff) |
 | 6 | **Human approval (SoD)** | Generated content is an *untrusted draft* until a qualified human (≠ the generator) approves it with attestation; only then is it published to an immutable `CourseVersion`. **Invariant across producers**: Mentible-pushed *and* Pramana-in-process content enter the **same** `ContentDraft → IN_REVIEW → APPROVED → PUBLISHED` gate (ADR-013 D4). | ADR-011 §7, ADR-013 D4 (Pramana side) | **Spec / partly built (pramana PR #1)** |
@@ -105,13 +105,17 @@ engineering reality stay in lockstep.
 
 ## 5. Honest gaps (do not let the doc over-claim)
 
-- **Gate 3 fires only on the lesson surface so far.** It is now wired into
-  `tasks.py` (`_format_warnings`, after gate 1) and its warnings ride on the job
-  status row + a per-provider `format_warnings` log line. But it runs on the
-  lesson generator only; the book/tutorial and Pramana-package surfaces still need
-  the same call at their write points. The validator's lesson path is a no-op
-  upstream, so we adapt lesson sections (`heading`/`body_markdown`) to the
-  tutorial shape it checks rather than edit the vendored file (ADR-002).
+- **Gate 3 now covers the lesson worker and the export book-scan.** The shared
+  `core/format_scan.py` runs after gate 1 in the lesson worker (warnings on the
+  job status row + a per-provider `format_warnings` log line) and over the whole
+  book at export (`book_warnings` checks lesson + tutorial + experiment per topic;
+  count on the `X-Content-Warnings` header + a log line). The export scan is the
+  only place tutorial/experiment content meets gate 3, since native generation
+  emits only lessons. The validator's lesson path is a no-op upstream, so we adapt
+  lesson sections (`heading`/`body_markdown`) to the tutorial shape it checks
+  rather than edit the vendored file (ADR-002). **Still pending:** the
+  Pramana Consumable Package surface (ADR-011) — gate 3 should run before a
+  package is signed + pushed.
 - **Experimental providers are unmeasured.** The `experimental` tier providers
   have no measured conformance tier yet (Phase 5). Until then their output is
   honestly draft-grade — the picker says so; the colophon/report must not imply

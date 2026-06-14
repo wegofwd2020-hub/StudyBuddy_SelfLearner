@@ -27,7 +27,6 @@ import uuid
 from typing import Any
 
 import redis.asyncio as redis
-from pipeline.content_format_validator import check_content
 from wegofwd_llm.conformance import generate_validated
 from wegofwd_llm.contract import LLMRequest
 from wegofwd_llm.errors import LLMError, LLMSchemaError
@@ -35,6 +34,7 @@ from wegofwd_llm.registry import build_provider, provenance
 
 from backend.config import settings
 from backend.src.core.byok_envelope import decrypt_api_key, parse_master_key
+from backend.src.core.format_scan import lesson_warnings
 from backend.src.core.log_redaction import get_logger
 from backend.src.generate.anthropic_caller import parse_json_response
 from backend.src.generate.lesson_schema import LessonOutput
@@ -77,26 +77,18 @@ def _format_warnings(lesson: LessonOutput) -> list[dict[str, Any]]:
 
     Schema validation (gate 1) guarantees structure but cannot see that a section
     titled "Balance Sheet" rendered no table, or a "Quadratic Formula" section
-    carries no KaTeX. `check_content` flags that drift as warnings that ride along
-    on the job's status row (a review-queue / prompt-drift signal — see
-    docs/QUALITY_GATES.md §1 gate 3, §2a). Warnings NEVER fail the job: the
-    content is already schema-valid.
+    carries no KaTeX. The warnings ride along on the job's status row (a
+    review-queue / prompt-drift signal — see docs/QUALITY_GATES.md §1 gate 3,
+    §2a) and NEVER fail the job: the content is already schema-valid.
 
-    The vendored validator's rich per-section checks key on a tutorial's
-    `{title, content}` shape; a lesson's sections carry the same information under
-    `{heading, body_markdown}`. We adapt here rather than edit the vendored file
-    (ADR-002), then relabel the warnings back to content_type "lesson".
-
-    Defensive: any failure returns [] — gate 3 must not break a good generation.
+    Delegates to the shared `core.format_scan` helper (same gate 3 the export
+    book-scan uses), which adapts the lesson to the validator's tutorial shape.
     """
     try:
-        adapted = {
-            "sections": [{"title": s.heading, "content": s.body_markdown} for s in lesson.sections]
-        }
-        return [
-            {**w.as_dict(), "content_type": "lesson"} for w in check_content("tutorial", adapted)
-        ]
+        return lesson_warnings(lesson.model_dump())
     except Exception:
+        # Defensive: a non-LessonOutput (no model_dump) must still not raise —
+        # gate 3 can't fail an already schema-valid generation.
         return []
 
 
