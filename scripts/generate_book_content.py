@@ -39,7 +39,13 @@ import time  # noqa: E402
 
 from wegofwd_llm.conformance import generate_validated  # noqa: E402
 from wegofwd_llm.contract import LLMRequest  # noqa: E402
-from wegofwd_llm.errors import LLMError, LLMSchemaError  # noqa: E402
+from wegofwd_llm.errors import (  # noqa: E402
+    LLMAuthError,
+    LLMConfigurationError,
+    LLMError,
+    LLMNotAllowedError,
+    LLMSchemaError,
+)
 from wegofwd_llm.registry import build_provider, provenance  # noqa: E402
 
 from backend.src.generate.anthropic_caller import parse_json_response  # noqa: E402
@@ -54,15 +60,22 @@ _MAX_REPAIRS = 2  # matches tasks._MAX_REPAIRS (1 call + 2 targeted repairs)
 # fails fast), the batch runner retries with backoff.
 _RETRY_BACKOFFS = (5, 15, 45)
 
+# Errors a re-roll can't fix: a bad/blocked key, an unknown provider, or a response
+# that failed schema validation after the repair budget. Retrying these just burns
+# the backoff (a 401 has no business waiting 5+15+45s) and, for auth, the tokens.
+# Anything else — rate-limit, timeout, 5xx, or a bare LLMError from an older seam
+# build that can't classify — stays retryable, so this is safe against wegofwd-llm
+# versions predating the typed-error mapping.
+_NON_RETRYABLE = (LLMSchemaError, LLMAuthError, LLMConfigurationError, LLMNotAllowedError)
+
 
 def _generate_one(provider, req, validate):
-    """generate_validated with backoff on transient provider errors. Schema
-    failures (repair budget already exhausted) are not retried — a re-roll rarely
-    helps and costs tokens."""
+    """generate_validated with backoff on transient provider errors. Auth/config
+    and schema failures are not retried — a re-roll can't fix them."""
     for attempt in range(len(_RETRY_BACKOFFS) + 1):
         try:
             return generate_validated(provider, req, validate, max_repairs=_MAX_REPAIRS)
-        except LLMSchemaError:
+        except _NON_RETRYABLE:
             raise
         except LLMError as err:
             if attempt == len(_RETRY_BACKOFFS):
