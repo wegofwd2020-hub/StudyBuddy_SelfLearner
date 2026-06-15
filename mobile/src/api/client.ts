@@ -3,6 +3,7 @@ import type {
   GenerateRequest,
   GenerateResponse,
   JobResponse,
+  Provenance,
 } from "@/types/lesson";
 import type {
   Book,
@@ -62,6 +63,19 @@ export async function submitGenerate(
 
 export async function getJobStatus(jobId: string): Promise<JobResponse> {
   return apiFetch<JobResponse>(`/jobs/${jobId}`);
+}
+
+// Current resolved provenance for a book's LLM config — the pin-or-default model
+// + version axes — for client-side staleness diffing (ADR-016 D7). Pass the
+// book's generationParams.model so `model` reflects the pin; null = default.
+// Key-free public metadata.
+export async function getCurrentProvenance(
+  providerId: string,
+  model: string | null,
+): Promise<Provenance> {
+  const q = new URLSearchParams({ provider: providerId });
+  if (model) q.set("model", model);
+  return apiFetch<Provenance>(`/registry/current?${q.toString()}`);
 }
 
 // ── Book authoring: POST /structure ───────────────────────────────────────────
