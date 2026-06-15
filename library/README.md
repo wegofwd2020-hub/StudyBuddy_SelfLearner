@@ -46,16 +46,31 @@ metadata? }`.
 ## Adding or updating a book
 
 1. Drop the `.book.json` into `books/`.
-2. Add/update its entry in `manifest.json`, including the `sha256` and `bytes`:
-
-   ```bash
-   shasum -a 256 library/books/<file>.book.json
-   wc -c < library/books/<file>.book.json
-   ```
-
+2. Add/update its entry in `manifest.json` (id, title, file, version, status,
+   counts). The `sha256`/`bytes` are recomputed for you on publish.
 3. Default-library books carry **full generated content** (ADR-017) once
    `published` — ship the finished book so users get value without spending
    their own BYOK tokens.
+
+## Publishing (owner-only, signed) — ADR-018
+
+A book only ships as a default once the **system-owner** publishes it. Promotion
+is owner-gated and tamper-evident (ADR-018 D2): publishing signs the entry's
+integrity fields (`id, file, version, status, sha256, bytes`) with an HMAC keyed
+by `SYSTEM_OWNER_SECRET`. Editing a `published` book, swapping its file, or
+hand-flipping `status` invalidates the signature.
+
+```bash
+# (SYSTEM_OWNER_SECRET must be set in the environment)
+python -m backend.src.core.owner_cli publish   <book-id>   # draft → published, recompute sha256/bytes, sign
+python -m backend.src.core.owner_cli unpublish <book-id>   # → draft, drop signature
+python -m backend.src.core.owner_cli verify                # every published book must be validly signed
+```
+
+`verify` is also a CI gate (`backend/tests/test_library_publish.py`): a
+`status: published` entry without a valid owner signature fails the build, so a
+book can't ship as a default without the owner's key. Mobile never holds the
+secret — verification runs owner-/build-side; the app trusts what was bundled.
 
 ## Current contents
 
