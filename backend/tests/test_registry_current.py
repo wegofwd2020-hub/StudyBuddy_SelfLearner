@@ -28,9 +28,7 @@ async def test_registry_current_is_cacheable(client):
 async def test_registry_current_echoes_pinned_model(client):
     # A book pinned to a non-default model: current.model must reflect the pin so
     # a deliberate pin compares equal client-side and is never flagged stale.
-    resp = await client.get(
-        "/api/v1/registry/current?provider=anthropic&model=claude-opus-4-8"
-    )
+    resp = await client.get("/api/v1/registry/current?provider=anthropic&model=claude-opus-4-8")
     assert resp.status_code == 200
     assert resp.json()["model"] == "claude-opus-4-8"
 
