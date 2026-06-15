@@ -137,6 +137,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--key-file", default=None, help="file containing the provider key (gitignored)")
     ap.add_argument("--limit", type=int, default=0, help="generate at most N topics this run (0 = all)")
+    ap.add_argument(
+        "--no-svg",
+        action="store_true",
+        help="forbid raw SVG (Mermaid-only). Use for models that loop on SVG path data, e.g. gemini-2.5-flash",
+    )
     args = ap.parse_args(argv)
 
     book_path = Path(args.book)
@@ -187,6 +192,7 @@ def main(argv: list[str] | None = None) -> int:
             prior_knowledge=None,
             framing=None,
             instructions=unit.get("enhancementInstructions"),
+            include_svg=not args.no_svg,
         )
         req = LLMRequest(prompt=prompt, max_tokens=_MAX_TOKENS, response_format="json")
         try:
