@@ -104,22 +104,30 @@ same **no-log / never-persisted-in-the-clear** discipline as provider keys
 (ADR-001). Compromise of the owner principal is high-impact, so its secret is
 held/rotated like a production signing key, separate from user-facing config.
 
-## Open decisions (for the decision-maker)
+## Open decisions
 
-- **O1 — Owner action surface at MVP:** standalone admin **CLI** vs a **signed
-  manifest** the build verifies vs a hidden in-app admin screen. (Lean: CLI /
-  signed manifest — no in-app admin until the hosted catalog exists.)
+**Resolved 2026-06-15** (O1, O3, O5 — implemented in D2, see below):
+
+- **O1 — Owner action surface at MVP → owner CLI.** `python -m
+  backend.src.core.owner_cli {publish,unpublish,verify}`, authorised by possession
+  of `SYSTEM_OWNER_SECRET`. No in-app admin until a hosted catalog exists.
+- **O3 — Owner ↔ managed vault → owner is the holder.** The owner principal holds
+  the managed keys; default content (e.g. #113) is generated under them.
+- **O5 — Promotion integrity → owner-HMAC signature.** Publishing signs the book's
+  integrity-critical fields (`id, file, version, status, sha256, bytes`) with an
+  HMAC keyed by the owner secret. `verify_manifest` (a CI gate) rejects any
+  `published` book whose signature is missing or invalid, so a hand-edited
+  `status: published` can't ship a default. Verification runs **where the secret
+  lives** (CLI / CI / the #112 build step) — mobile never holds the secret and
+  trusts what was bundled after the gate passed.
+
+Still open:
+
 - **O2 — One owner forever, or an owner-managed publisher allowlist later?** Start
   with exactly one; revisit if multiple curators are needed.
-- **O3 — Owner ↔ managed-vault relationship (ADR-005):** is the owner principal the
-  _holder_ of the managed vault, or a separate ops identity that _authorises_ vault
-  use? (Lean: holder, at least at MVP.)
 - **O4 — Where the published default catalog lives once the backend library exists
   (v1.1+):** an owner-owned global table vs the committed repo files of today
   (ADR-017). Until then, "publish" is a repo/build act by the owner.
-- **O5 — Promotion integrity:** should `published` state be **cryptographically
-  signed** by the owner key (so a tampered `manifest.json` can't ship a book as a
-  default), or is repo review sufficient at MVP?
 
 ## Consequences
 
