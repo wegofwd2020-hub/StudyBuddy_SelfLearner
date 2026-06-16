@@ -25,11 +25,13 @@ from fastapi.responses import JSONResponse
 from starlette import status as _status
 
 from backend.config import settings
+from backend.src.accounts import router as account_router
 from backend.src.core.log_redaction import (
     configure_logging,
     get_logger,
     scrub_validation_errors,
 )
+from backend.src.db.pool import create_pool
 from backend.src.export import router as export_router
 from backend.src.generate import router as generate_router
 from backend.src.structure import router as structure_router
@@ -48,11 +50,15 @@ log = get_logger("main")
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     log.info("startup", app_env=settings.app_env)
     app.state.redis = redis.from_url(settings.redis_url, decode_responses=False)
+    # Account store (ADR-014). None when DATABASE_URL is unset — account routes 503.
+    app.state.db = await create_pool(settings.database_url)
     try:
         yield
     finally:
         log.info("shutdown")
         await app.state.redis.close()
+        if app.state.db is not None:
+            await app.state.db.close()
 
 
 app = FastAPI(
@@ -67,8 +73,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -92,6 +98,7 @@ async def _validation_exception_handler(
 app.include_router(generate_router.router)
 app.include_router(structure_router.router)
 app.include_router(export_router.router)
+app.include_router(account_router.router)
 
 
 @app.get("/healthz")
