@@ -1,6 +1,13 @@
 import "react-native-url-polyfill/auto"; // RN has no global URL — Supabase needs it
+import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { largeSecureStore } from "@/secure/largeSecureStore";
+
+// expo-secure-store is native-only. On web there's no hardware secure store, so
+// fall back to AsyncStorage (localStorage); on native, the encrypted LargeSecureStore
+// (ADR-014 D1). Web is a dev-preview convenience — the product target is native.
+const authStorage = Platform.OS === "web" ? AsyncStorage : largeSecureStore;
 
 // Supabase project config (ADR-014 D1, O1). Public client-side values; set them in
 // the app env to enable login. Unset → identity disabled (the anonymous demo),
@@ -13,7 +20,7 @@ export const isSupabaseConfigured = Boolean(url && anonKey);
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(url, anonKey, {
       auth: {
-        storage: largeSecureStore, // encrypted, secure-store-protected (D1)
+        storage: authStorage, // native: encrypted secure-store (D1); web: localStorage
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false, // no URL-based session pickup on native
