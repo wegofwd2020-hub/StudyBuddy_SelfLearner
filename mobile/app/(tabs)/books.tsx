@@ -3,6 +3,8 @@ import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, V
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteBook, loadBook, loadBookIndex } from "@/storage/bookStore";
+import { useCurrentProvenance } from "@/hooks/useCurrentProvenance";
+import { countStaleTopics } from "@/lib/staleness";
 import { BookCover } from "@/components/BookCover";
 import { HelpButton } from "@/components/HelpButton";
 import { useResponsive } from "@/hooks/useResponsive";
@@ -77,6 +79,14 @@ function BookDetail({
     };
   }, [id]);
 
+  // Staleness rollup (ADR-016 D7) — the book's current pin-resolved provenance,
+  // fetched once + cached. Called before the early returns (hooks rule); while no
+  // book is loaded it harmlessly resolves the anthropic default (cached, key-free).
+  const current = useCurrentProvenance(
+    book?.generationParams?.provider ?? "anthropic",
+    book?.generationParams?.model ?? null,
+  );
+
   if (!id) {
     return (
       <View style={styles.detailEmpty}>
@@ -96,6 +106,9 @@ function BookDetail({
   const units = book.toc.subjects.flatMap((s) => s.units);
   const content = book.content ?? {};
   const generated = units.filter((u) => u.id && content[u.id]).length;
+  // Degradation rollup (ADR-016 D7): how many generated topics were made with an
+  // older model than the book's current config. 0 when offline / can't tell.
+  const staleCount = countStaleTopics(Object.values(content), current);
   const synopsis = units
     .map((u) => (u.id && content[u.id] ? content[u.id].lesson.synopsis : undefined))
     .find(Boolean);
@@ -115,6 +128,21 @@ function BookDetail({
           ? `✓ All ${units.length} topics generated`
           : `${generated} / ${units.length} topics generated`}
       </Text>
+
+      {staleCount > 0 && (
+        <Pressable
+          style={styles.staleRow}
+          onPress={() => onGenerate(book.id)}
+          accessibilityRole="button"
+          accessibilityHint="Opens the generation screen to refresh stale topics"
+        >
+          <Ionicons name="refresh-circle-outline" size={16} color={colors.warning} />
+          <Text style={styles.staleText}>
+            {staleCount} {staleCount === 1 ? "topic was" : "topics were"} made with an older
+            model — regenerate?
+          </Text>
+        </Pressable>
+      )}
 
       {synopsis ? (
         <Text style={styles.detailDesc}>{synopsis}</Text>
@@ -309,6 +337,13 @@ const styles = StyleSheet.create({
   detailTitle: { fontSize: typography.sizeXl, fontWeight: "700", color: colors.text },
   detailMeta: { fontSize: typography.sizeSm, color: colors.textMuted },
   detailDone: { color: colors.success, fontWeight: "600" },
+  staleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  staleText: { flex: 1, fontSize: typography.sizeSm, color: colors.warning },
   detailDesc: { fontSize: typography.sizeMd, color: colors.textSecondary, lineHeight: 22, marginTop: spacing.sm },
   detailDescMuted: { fontSize: typography.sizeSm, color: colors.textMuted, fontStyle: "italic", marginTop: spacing.sm },
   contentsLabel: {
