@@ -129,6 +129,14 @@ export default function SettingsScreen() {
         </Pressable>
       )}
 
+      <Pressable style={styles.accountRow} onPress={() => router.push("/usage")}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.accountTitle}>Usage</Text>
+          <Text style={styles.accountSub}>Tokens & estimated cost (observed, not billed)</Text>
+        </View>
+        <Text style={styles.accountChevron}>›</Text>
+      </Pressable>
+
       <View style={styles.labelRow}>
         <Text style={styles.sectionLabel}>API keys (BYOK)</Text>
         <HelpButton topic="byok" label="BYOK" />

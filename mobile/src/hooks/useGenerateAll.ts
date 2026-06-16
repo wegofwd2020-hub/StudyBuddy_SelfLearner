@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { pollUntilDone, submitGenerate } from "@/api/client";
 import { buildTopicPrompt } from "@/hooks/topicPrompt";
 import { buildGenerateRequest } from "@/lib/buildGenerateRequest";
+import { recordUsage } from "@/storage/usageStore";
 import type { StructuredTOC } from "@/types/book";
 import type { GenerationParams } from "@/types/generationParams";
 import type { LessonOutput, Provenance } from "@/types/lesson";
@@ -162,6 +163,9 @@ export function useGenerateAll({
           if (cancelledRef.current) break;
 
           if (job.status === "done" && job.result) {
+            // Record observed token usage to the device-local ledger (SBQ-USAGE-001).
+            // Fire-and-forget — recordUsage never throws into the batch loop.
+            if (job.usage) void recordUsage(job.usage, { topicTitle: t.title });
             // The prompt folds subtopics into the topic line, so the model
             // echoes them back into lesson.topic (the rendered H1 heading).
             // Force the clean topic title so the heading isn't polluted with
