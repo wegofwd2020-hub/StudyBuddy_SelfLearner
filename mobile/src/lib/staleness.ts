@@ -32,3 +32,23 @@ export function isUnitStale(
     stored.contract_version !== current.contract_version
   );
 }
+
+/**
+ * How many of a book's generated topics were made with an older model, relative
+ * to the book's current pin-resolved provenance. Powers the Books-detail
+ * degradation rollup (ADR-016 D7) so a user can spot stale content without
+ * opening every topic.
+ *
+ * Only confidently-stale units (`isUnitStale === true`) count — `undefined`
+ * ("can't tell": offline, or a version not stamped) is never counted, so we
+ * never nag on a guess.
+ */
+export function countStaleTopics(
+  topics: { provenance?: Provenance }[],
+  current: Provenance | undefined,
+): number {
+  return topics.reduce(
+    (n, t) => (isUnitStale(t.provenance, current) === true ? n + 1 : n),
+    0,
+  );
+}

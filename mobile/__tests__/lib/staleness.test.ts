@@ -1,4 +1,4 @@
-import { isUnitStale } from "@/lib/staleness";
+import { countStaleTopics, isUnitStale } from "@/lib/staleness";
 import type { Provenance } from "@/types/lesson";
 
 // isUnitStale decides the TrustBadge `isStale` hint (ADR-016 D7). It must mirror
@@ -52,5 +52,34 @@ describe("isUnitStale", () => {
     expect(
       isUnitStale(stored(), { ...current, integration_version: undefined }),
     ).toBeUndefined();
+  });
+});
+
+describe("countStaleTopics — Books degradation rollup", () => {
+  it("counts only confidently-stale topics", () => {
+    const topics = [
+      { provenance: stored() }, // fresh
+      { provenance: stored({ integration_version: 1 }) }, // stale
+      { provenance: stored({ model: "claude-sonnet-4-5" }) }, // stale (moved default)
+    ];
+    expect(countStaleTopics(topics, current)).toBe(2);
+  });
+
+  it("never counts 'can't tell' units (undefined ⇒ not stale)", () => {
+    const topics = [
+      { provenance: undefined }, // no provenance → undefined
+      { provenance: stored({ integration_version: undefined }) }, // unstamped → undefined
+      { provenance: stored({ integration_version: 1 }) }, // genuinely stale
+    ];
+    expect(countStaleTopics(topics, current)).toBe(1);
+  });
+
+  it("returns 0 when current is unknown (offline) — no nag on a guess", () => {
+    const topics = [{ provenance: stored({ integration_version: 1 }) }];
+    expect(countStaleTopics(topics, undefined)).toBe(0);
+  });
+
+  it("returns 0 for a book with no generated topics", () => {
+    expect(countStaleTopics([], current)).toBe(0);
   });
 });
