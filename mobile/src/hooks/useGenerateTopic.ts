@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { pollUntilDone, submitGenerate } from "@/api/client";
 import { buildTopicPrompt } from "@/hooks/topicPrompt";
 import { buildGenerateRequest } from "@/lib/buildGenerateRequest";
+import { recordUsage } from "@/storage/usageStore";
 import type { GenerationParams } from "@/types/generationParams";
 import type { LessonOutput, Provenance } from "@/types/lesson";
 
@@ -74,6 +75,9 @@ export function useGenerateTopic({
 
         if (job.status === "done" && job.result) {
           setStatus("done");
+          // Record observed token usage to the device-local ledger (SBQ-USAGE-001).
+          // Fire-and-forget — recordUsage never throws into this flow.
+          if (job.usage) void recordUsage(job.usage, { topicTitle: title });
           // Force the clean topic title as the heading — the prompt folds
           // subtopics into the topic line and the model echoes them into
           // lesson.topic (the rendered H1), which pollutes the heading.

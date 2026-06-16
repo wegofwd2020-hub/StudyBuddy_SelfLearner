@@ -31,6 +31,21 @@ export interface Provenance {
   contract_version?: number;
 }
 
+// Observed token usage for one generation (SBQ-USAGE-001). The provider returns
+// exact counts on every call; the backend sums them across repair attempts, so
+// this is real spend, not just the accepted lesson. Metadata only — no key, no
+// content. The device appends it to a local usage ledger (see storage/usageStore).
+export interface UsageObservation {
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  // True when a provider didn't report usage and the seam estimated the counts.
+  tokens_estimated: boolean;
+  // Total provider calls for this generation (1 = valid first try; >1 = repairs).
+  attempts: number;
+}
+
 export interface JobResponse {
   job_id: string;
   status: JobStatus;
@@ -40,6 +55,8 @@ export interface JobResponse {
   // policy at generation; compliance + integrity attach at export. Carries no
   // key material. `provenance` above stays for back-compat with pre-trust jobs.
   trust?: TrustManifest;
+  // Observed token usage for this generation (SBQ-USAGE-001). Present on done.
+  usage?: UsageObservation;
   error?: string;
 }
 

@@ -83,6 +83,10 @@ export default function RootLayout() {
           name="account"
           options={{ title: "Account", headerBackTitle: "Settings" }}
         />
+        <Stack.Screen
+          name="usage"
+          options={{ title: "Usage", headerBackTitle: "Settings" }}
+        />
       </Stack>
       <OnboardingModal />
     </AuthProvider>
