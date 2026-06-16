@@ -1,0 +1,162 @@
+import React, { useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Redirect, useRouter } from "expo-router";
+import { useAuth } from "@/auth/AuthProvider";
+import { useAccount } from "@/hooks/useAccount";
+import { PageContainer } from "@/components/PageContainer";
+import { PROVIDERS } from "@/constants/providers";
+import { deleteApiKey } from "@/secure/keyStore";
+import { colors, radius, spacing, typography } from "@/constants/theme";
+
+export default function AccountScreen() {
+  const router = useRouter();
+  const { status, session, resetPassword, signOut } = useAuth();
+  const { account, error, setCredential, removeCredential, purge } = useAccount();
+  const [busy, setBusy] = useState(false);
+
+  if (status === "unavailable") return <Redirect href="/settings" />;
+  if (status === "signed_out" || status === "loading") return <Redirect href="/sign-in" />;
+
+  const email = account?.email ?? session?.user?.email ?? "";
+  const credBy = new Map((account?.credentials ?? []).map((c) => [c.provider_id, c]));
+
+  const onReset = async () => {
+    const { error: err } = await resetPassword(email);
+    Alert.alert(
+      err ? "Couldn’t send reset email" : "Check your email",
+      err ?? `We sent a password-reset link to ${email}.`,
+    );
+  };
+
+  const onDelete = () => {
+    Alert.alert(
+      "Delete account?",
+      "This permanently deletes your synced account and provider settings. Your device-local API keys stay on this device — clear them separately if you want.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await purge();
+              await signOut();
+              router.replace("/settings");
+            } catch (e) {
+              Alert.alert("Couldn’t delete account", e instanceof Error ? e.message : "Try again.");
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const onClearLocalKeys = () => {
+    Alert.alert("Clear device keys?", "Removes every provider API key stored on this device.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear",
+        style: "destructive",
+        onPress: async () => {
+          await Promise.all(PROVIDERS.map((p) => deleteApiKey(p.id)));
+          Alert.alert("Cleared", "All device-local provider keys were removed.");
+        },
+      },
+    ]);
+  };
+
+  return (
+    <PageContainer>
+      <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl }}>
+        <Text style={styles.label}>Signed in as</Text>
+        <Text style={styles.email}>{email || "—"}</Text>
+
+        <Pressable style={styles.linkRow} onPress={onReset}>
+          <Text style={styles.linkText}>Send password-reset email</Text>
+        </Pressable>
+
+        <Text style={styles.section}>Providers</Text>
+        <Text style={styles.hint}>
+          Which providers you have a key for. Keys themselves stay on your device (BYOK).
+        </Text>
+        {PROVIDERS.map((p) => {
+          const cred = credBy.get(p.id);
+          return (
+            <View key={p.id} style={styles.providerRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.providerLabel}>{p.label}</Text>
+                <Text style={styles.providerStatus}>
+                  {cred ? `${cred.source} · ${cred.status}` : "not on this account"}
+                </Text>
+              </View>
+              {cred ? (
+                <Pressable onPress={() => void removeCredential(p.id)}>
+                  <Text style={styles.removeText}>Remove</Text>
+                </Pressable>
+              ) : (
+                <Pressable onPress={() => void setCredential(p.id, "device_local")}>
+                  <Text style={styles.addText}>On this device</Text>
+                </Pressable>
+              )}
+            </View>
+          );
+        })}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <Pressable
+          style={styles.secondaryButton}
+          onPress={async () => {
+            await signOut();
+            router.replace("/settings");
+          }}
+        >
+          <Text style={styles.secondaryText}>Sign out</Text>
+        </Pressable>
+
+        <Pressable style={styles.secondaryButton} onPress={onClearLocalKeys}>
+          <Text style={styles.secondaryText}>Clear device keys</Text>
+        </Pressable>
+
+        <Pressable style={styles.deleteButton} disabled={busy} onPress={onDelete}>
+          <Text style={styles.deleteText}>Delete account</Text>
+        </Pressable>
+      </ScrollView>
+    </PageContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  label: { color: colors.textMuted, fontSize: typography.sizeXs, textTransform: "uppercase" },
+  email: { color: colors.text, fontSize: typography.sizeXl, fontWeight: "700", marginBottom: spacing.md },
+  linkRow: { paddingVertical: spacing.sm },
+  linkText: { color: colors.primary, fontSize: typography.sizeMd },
+  section: { color: colors.text, fontSize: typography.sizeLg, fontWeight: "700", marginTop: spacing.lg },
+  hint: { color: colors.textSecondary, fontSize: typography.sizeSm, marginBottom: spacing.sm },
+  providerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  providerLabel: { color: colors.text, fontSize: typography.sizeMd },
+  providerStatus: { color: colors.textMuted, fontSize: typography.sizeXs, marginTop: 2 },
+  addText: { color: colors.primary, fontSize: typography.sizeSm },
+  removeText: { color: colors.error, fontSize: typography.sizeSm },
+  error: { color: colors.error, fontSize: typography.sizeSm, marginTop: spacing.sm },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.lg,
+  },
+  secondaryText: { color: colors.text, fontSize: typography.sizeMd, fontWeight: "600" },
+  deleteButton: { paddingVertical: spacing.md, alignItems: "center", marginTop: spacing.xl },
+  deleteText: { color: colors.error, fontSize: typography.sizeMd, fontWeight: "700" },
+});

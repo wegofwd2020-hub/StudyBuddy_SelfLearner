@@ -15,6 +15,8 @@ export interface AuthValue {
   accessToken: string | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  // Triggers Supabase's password-reset email (the IdP owns the reset flow, D1).
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -55,6 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp: async (email, password) => {
         if (!supabase) return { error: "Sign-up is not available." };
         const { error } = await supabase.auth.signUp({ email, password });
+        return { error: error?.message ?? null };
+      },
+      resetPassword: async (email) => {
+        if (!supabase) return { error: "Password reset is not available." };
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
         return { error: error?.message ?? null };
       },
       signOut: async () => {
