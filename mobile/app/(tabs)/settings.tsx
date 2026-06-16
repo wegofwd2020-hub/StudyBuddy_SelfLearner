@@ -22,11 +22,13 @@ import { DEFAULT_PROVIDER_ID, PROVIDERS, providerInfo } from "@/constants/provid
 import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
 import { HelpButton } from "@/components/HelpButton";
 import { PageContainer } from "@/components/PageContainer";
+import { useAuth } from "@/auth/AuthProvider";
 import { loadDefaultParams, saveDefaultParams } from "@/storage/settingsStore";
 import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { status: authStatus, session } = useAuth();
   const [draftKey, setDraftKey] = useState("");
   const [savedMask, setSavedMask] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -109,6 +111,23 @@ export default function SettingsScreen() {
           />
         </View>
       </View>
+
+      {authStatus !== "unavailable" && (
+        <Pressable
+          style={styles.accountRow}
+          onPress={() => router.push(authStatus === "signed_in" ? "/account" : "/sign-in")}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.accountTitle}>Account</Text>
+            <Text style={styles.accountSub}>
+              {authStatus === "signed_in"
+                ? (session?.user?.email ?? "Signed in")
+                : "Sign in to sync across devices"}
+            </Text>
+          </View>
+          <Text style={styles.accountChevron}>›</Text>
+        </Pressable>
+      )}
 
       <View style={styles.labelRow}>
         <Text style={styles.sectionLabel}>API keys (BYOK)</Text>
@@ -223,6 +242,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   labelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  accountTitle: { color: colors.text, fontSize: typography.sizeMd, fontWeight: "600" },
+  accountSub: { color: colors.textMuted, fontSize: typography.sizeXs, marginTop: 2 },
+  accountChevron: { color: colors.textMuted, fontSize: typography.sizeXl },
   // Provider selector for the BYOK key section — same beveled white/yellow as the
   // param chips (selected = yellow, unselected = white; black glyphs).
   providerRow: { flexDirection: "row", gap: spacing.sm, paddingVertical: spacing.xs },

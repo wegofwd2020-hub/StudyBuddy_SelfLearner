@@ -9,6 +9,11 @@ jest.mock("../../src/secure/keyStore", () => ({
   isValidApiKey: (k: string) => k.startsWith("sk-ant-") && k.length >= 20,
 }));
 
+// Settings now reads useAuth; stub it (auth is covered by AuthProvider.test).
+jest.mock("../../src/auth/AuthProvider", () => ({
+  useAuth: () => ({ status: "unavailable", session: null }),
+}));
+
 const {
   loadApiKey,
   saveApiKey,

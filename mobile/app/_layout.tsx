@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { AuthProvider } from "@/auth/AuthProvider";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { useSeedDefaultLibrary } from "@/hooks/useSeedDefaultLibrary";
 
@@ -7,7 +8,7 @@ export default function RootLayout() {
   // Seed the default shareable library on first run (ADR-017, #111).
   useSeedDefaultLibrary();
   return (
-    <>
+    <AuthProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -74,8 +75,16 @@ export default function RootLayout() {
             headerBackTitle: "Library",
           }}
         />
+        <Stack.Screen
+          name="sign-in"
+          options={{ title: "Sign in", headerBackTitle: "Settings" }}
+        />
+        <Stack.Screen
+          name="account"
+          options={{ title: "Account", headerBackTitle: "Settings" }}
+        />
       </Stack>
       <OnboardingModal />
-    </>
+    </AuthProvider>
   );
 }
