@@ -40,7 +40,9 @@ function HtmlViewWeb({ html, label }: HtmlViewProps) {
 
   return (
     <View style={styles.container}>
-      {/* @ts-expect-error — iframe is a valid web element; RN types don't know it */}
+      {/* @ts-ignore — <iframe> is web-only; whether RN/react-native-web types know it
+          depends on what's in scope, so @ts-ignore (not @ts-expect-error) avoids both a
+          type error and an "unused directive" error. This branch only renders on web. */}
       <iframe
         src={src}
         style={{ flex: 1, border: "none", width: "100%", height: "100%" }}
