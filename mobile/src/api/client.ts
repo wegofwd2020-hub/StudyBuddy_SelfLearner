@@ -25,7 +25,11 @@ export function resolveBaseUrl(): string {
 const BASE_URL = resolveBaseUrl();
 
 const POLL_INTERVAL_MS = 3_000;
-const POLL_TIMEOUT_MS = 120_000;
+// A multi-page lesson legitimately takes minutes to generate (SCOPE D12: "latency
+// target: minutes, not seconds") — observed ~150-170s for a full topic. 120s gave
+// up before the backend finished, surfacing a false "timed out" while the job
+// actually completed. Allow generous headroom for deep / long lessons.
+const POLL_TIMEOUT_MS = 360_000;
 
 // Parse a Retry-After header (our backend sends integer seconds). Returns
 // undefined for an absent/non-numeric value (we don't handle the HTTP-date form
