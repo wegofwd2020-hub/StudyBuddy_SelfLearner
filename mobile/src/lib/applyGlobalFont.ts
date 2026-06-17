@@ -7,22 +7,27 @@
 // source styles.
 //
 // Rules (per element, from its flattened style):
-//   • monospace fields (BYOK key / code) are left untouched
-//   • explicit serif intent ("serif"/"Georgia") OR large+bold text → heading (serif)
-//   • everything else → body (Inter)
-//   • dyslexic mode overrides all of the above → OpenDyslexic
+//   • an explicit fontFamily is LEFT UNTOUCHED — except our serif text-intent
+//     ("serif"/"Georgia"), which is remapped to the bundled serif. This is what
+//     keeps ICON FONTS (Ionicons, Material…) and monospace (key/code) working:
+//     overriding "Ionicons" with a text font renders the glyph codepoints as tofu
+//     / CJK characters instead of icons.
+//   • no explicit family → body (Inter), or heading (serif) if it's large+bold
+//   • dyslexic mode swaps the text families (body/heading) to OpenDyslexic, but
+//     still never touches an unrecognised explicit family (icons stay icons)
 //
 // On web we do nothing: the theme's CSS font stacks + real fontWeight already work.
 import React from "react";
 import { Platform, StyleSheet, Text, TextInput } from "react-native";
-import { resolveFamily, type FontRole } from "@/constants/fonts";
+import { resolveFamily } from "@/constants/fonts";
 import { isDyslexic } from "@/state/fontMode";
 
 // Heading heuristic: titles in this app are >= sizeXl (22) and semibold/bold. Body
 // text never hits both, so this reliably separates the two without per-screen markers.
 const HEADING_MIN_SIZE = 22;
 
-const MONO_RE = /mono|menlo|jetbrains/i;
+// Our serif text-intent on native (theme.fontHeading resolves to these). Anything
+// else with an explicit family — icon sets, "monospace" — is deliberately skipped.
 const SERIF_RE = /serif|georgia/i;
 
 function isBoldish(weight: unknown): boolean {
@@ -31,20 +36,29 @@ function isBoldish(weight: unknown): boolean {
   return !Number.isNaN(n) && n >= 600;
 }
 
-function familyFor(style: unknown): string | null {
+// Decide the family to inject for a flattened style, or null to leave it untouched.
+// Pure + exported so the icon-font / monospace / heading rules are unit-tested.
+export function resolveFamilyForStyle(style: unknown, dyslexic: boolean): string | null {
   const flat = (StyleSheet.flatten(style as never) ?? {}) as {
     fontFamily?: string;
     fontWeight?: string | number;
     fontSize?: number;
   };
-  // Preserve deliberate monospace (key field, code).
-  if (flat.fontFamily && MONO_RE.test(flat.fontFamily)) return null;
 
-  let role: FontRole = "body";
-  if (flat.fontFamily && SERIF_RE.test(flat.fontFamily)) role = "heading";
-  else if ((flat.fontSize ?? 0) >= HEADING_MIN_SIZE && isBoldish(flat.fontWeight)) role = "heading";
+  if (flat.fontFamily) {
+    // Only our serif text-intent gets remapped; every other explicit family
+    // (icon sets, "monospace", a deliberate family) is left exactly as-is.
+    if (SERIF_RE.test(flat.fontFamily)) return resolveFamily("heading", flat.fontWeight, dyslexic);
+    return null;
+  }
 
-  return resolveFamily(role, flat.fontWeight, isDyslexic());
+  const role =
+    (flat.fontSize ?? 0) >= HEADING_MIN_SIZE && isBoldish(flat.fontWeight) ? "heading" : "body";
+  return resolveFamily(role, flat.fontWeight, dyslexic);
+}
+
+function familyFor(style: unknown): string | null {
+  return resolveFamilyForStyle(style, isDyslexic());
 }
 
 function patch(Component: { render?: (...args: unknown[]) => unknown }) {
