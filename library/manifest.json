@@ -24,14 +24,14 @@
       "id": "product-sense-and-ai",
       "title": "Product Sense and AI: A Practical Guide for Experienced Professionals in the AI Era",
       "file": "books/product-sense-and-ai.book.json",
-      "version": "1.1",
+      "version": "1.2",
       "status": "published",
       "subjectCount": 7,
       "unitCount": 15,
       "generatedCount": 15,
-      "sha256": "2603903a476305e6a36163e8b9bf98cbfd92fd3bcf09716a444149dc41101399",
-      "bytes": 179491,
-      "signature": "ba2ef99058e1201fa5633339f3c55a69b720297e601b5316fb4b216ad1f8c877"
+      "sha256": "53662b3b74b4e3b95f764c1185c06a4096d44226aa3c0748debca4a6f63309b6",
+      "bytes": 180844,
+      "signature": "b3502a9c5725a046f9d25104bbdf1429234aa39d786463a95edbde2eaf220451"
     }
   ]
 }

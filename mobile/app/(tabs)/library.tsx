@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteEpub, listEpubs, openEpub, saveEpub, type EpubMeta } from "@/storage/epubLibrary";
@@ -50,7 +50,9 @@ function mimeForExt(ext: string): string {
 function DemoLibrary() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
-  const numColumns = isDesktop ? 4 : 2;
+  // Fixed, icon-sized covers that left-pack and wrap — so 2 books read as small
+  // thumbnails rather than each stretching to half the (wide) screen.
+  const tileW = isDesktop ? 172 : 132;
   const [books, setBooks] = useState<BookMeta[]>([]);
 
   // Await the (idempotent) seed before listing, so the very first launch shows the
@@ -70,28 +72,24 @@ function DemoLibrary() {
   );
 
   return (
-    <FlatList
-      key={`demo-${numColumns}`}
-      style={styles.demoShelf}
-      contentContainerStyle={styles.demoContent}
-      data={books}
-      keyExtractor={(i) => i.id}
-      numColumns={numColumns}
-      columnWrapperStyle={styles.demoRow}
-      ListHeaderComponent={<Text style={styles.demoHeader}>Your books</Text>}
-      renderItem={({ item }) => (
-        <Pressable
-          style={styles.demoTile}
-          onPress={() => router.push(`/book/saved/${item.id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={`Read: ${item.title}`}
-        >
-          <BookCover title={item.title} coverSvg={item.coverSvg} />
-          <Text style={styles.demoTileTitle} numberOfLines={2}>{item.title}</Text>
-          <Text style={styles.demoTileMeta}>{item.unitCount} topics</Text>
-        </Pressable>
-      )}
-    />
+    <ScrollView style={styles.demoShelf} contentContainerStyle={styles.demoContent}>
+      <Text style={styles.demoHeader}>Your books</Text>
+      <View style={styles.demoGrid}>
+        {books.map((item) => (
+          <Pressable
+            key={item.id}
+            style={[styles.demoTile, { width: tileW }]}
+            onPress={() => router.push(`/book/saved/${item.id}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`Read: ${item.title}`}
+          >
+            <BookCover title={item.title} coverSvg={item.coverSvg} />
+            <Text style={styles.demoTileTitle} numberOfLines={2}>{item.title}</Text>
+            <Text style={styles.demoTileMeta}>{item.unitCount} topics</Text>
+          </Pressable>
+        ))}
+      </View>
+    </ScrollView>
   );
 }
 
@@ -281,16 +279,16 @@ function EpubLibrary() {
 }
 
 const styles = StyleSheet.create({
-  // Demo Library (bundled-books shelf)
+  // Demo Library (bundled-books shelf) — small, left-packed cover thumbnails.
   demoShelf: { flex: 1, backgroundColor: colors.background },
   demoContent: { padding: spacing.md, maxWidth: MAX_WIDE_WIDTH, width: "100%", alignSelf: "center" },
-  demoRow: { gap: spacing.md },
   demoHeader: {
     fontSize: typography.sizeXl, fontWeight: "700", color: colors.text,
     marginBottom: spacing.md,
   },
-  demoTile: { flex: 1, maxWidth: "50%", marginBottom: spacing.md, gap: spacing.xs },
-  demoTileTitle: { fontSize: typography.sizeSm, fontWeight: "700", color: colors.text },
+  demoGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
+  demoTile: { marginBottom: spacing.sm, gap: spacing.xs },
+  demoTileTitle: { fontSize: typography.sizeXs, fontWeight: "700", color: colors.text },
   demoTileMeta: { fontSize: typography.sizeXs, color: colors.textMuted },
 
   list: { flex: 1, backgroundColor: colors.background },
