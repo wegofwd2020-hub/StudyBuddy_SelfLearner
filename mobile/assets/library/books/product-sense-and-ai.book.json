@@ -938,6 +938,7 @@
         "term": "SDD — Spec-Driven Development",
         "definition": "An approach that inverts the usual reflex by making an explicit specification the shared source of truth that both humans and AI build from."
       }
-    ]
+    ],
+    "coverSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 1600\"><rect width=\"1200\" height=\"1600\" fill=\"#312a8c\"/><rect x=\"0\" y=\"980\" width=\"1200\" height=\"620\" fill=\"#f5f3ff\"/><path d=\"M360 470 L540 650 L840 310\" fill=\"none\" stroke=\"#34d27e\" stroke-width=\"64\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><rect x=\"104\" y=\"1058\" width=\"110\" height=\"22\" rx=\"11\" fill=\"#16a34a\"/><text x=\"104\" y=\"1196\" font-family=\"Georgia, 'Times New Roman', serif\" font-weight=\"700\" font-size=\"104\" fill=\"#1e1b4b\">Product Sense</text><text x=\"104\" y=\"1314\" font-family=\"Georgia, 'Times New Roman', serif\" font-weight=\"700\" font-size=\"104\" fill=\"#1e1b4b\">and AI</text><text x=\"106\" y=\"1392\" font-family=\"Georgia, 'Times New Roman', serif\" font-size=\"42\" fill=\"#4f46e5\">A Practical Guide for Experienced</text><text x=\"106\" y=\"1444\" font-family=\"Georgia, 'Times New Roman', serif\" font-size=\"42\" fill=\"#4f46e5\">Professionals in the AI Era</text><text x=\"106\" y=\"1520\" font-family=\"Georgia, 'Times New Roman', serif\" font-style=\"italic\" font-size=\"44\" fill=\"#5b5a78\">by Sridhar Parthasarathy</text><text x=\"106\" y=\"1576\" font-family=\"'Helvetica Neue', Arial, sans-serif\" font-weight=\"700\" font-size=\"34\" fill=\"#6b7299\">MENTIBLE</text></svg>"
   }
 }
