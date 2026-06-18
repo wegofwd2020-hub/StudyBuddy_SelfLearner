@@ -10,6 +10,7 @@ import { FONT_ASSETS } from "@/constants/fonts";
 import { applyGlobalFont } from "@/lib/applyGlobalFont";
 import { loadFontMode, useFontMode } from "@/state/fontMode";
 import { colors } from "@/constants/theme";
+import { IS_DEMO } from "@/constants/demo";
 
 // Install the global text-font interceptor before any component renders (native-only).
 applyGlobalFont();
@@ -116,7 +117,9 @@ export default function RootLayout() {
           options={{ title: "Usage", headerBackTitle: "Settings" }}
         />
       </Stack>
-      <OnboardingModal />
+      {/* The onboarding modal is authoring-focused (BYOK, "author yourself") —
+          irrelevant in a read-only demo build, so skip it there. */}
+      {!IS_DEMO && <OnboardingModal />}
     </AuthProvider>
   );
 }

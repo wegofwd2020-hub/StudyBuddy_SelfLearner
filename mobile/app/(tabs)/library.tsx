@@ -11,6 +11,9 @@ import { BookCover } from "@/components/BookCover";
 import { useResponsive } from "@/hooks/useResponsive";
 import { MAX_WIDE_WIDTH } from "@/constants/layout";
 import { colors, radius, spacing, typography } from "@/constants/theme";
+import { IS_DEMO } from "@/constants/demo";
+import { loadBookIndex } from "@/storage/bookStore";
+import type { BookMeta } from "@/types/book";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -38,11 +41,59 @@ function mimeForExt(ext: string): string {
   }
 }
 
+// Demo Library: the bundled books seeded on first run (ADR-017) live in the book
+// store, not the EPUB shelf, so the normal EPUB Library would read empty in a
+// demo build. Here we surface those books directly on the Library tab — the demo
+// lands on a full shelf and taps straight into the reader (/book/saved/[id]).
+function DemoLibrary() {
+  const router = useRouter();
+  const { isDesktop } = useResponsive();
+  const numColumns = isDesktop ? 4 : 2;
+  const [books, setBooks] = useState<BookMeta[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBookIndex().then(setBooks);
+    }, []),
+  );
+
+  return (
+    <FlatList
+      key={`demo-${numColumns}`}
+      style={styles.demoShelf}
+      contentContainerStyle={styles.demoContent}
+      data={books}
+      keyExtractor={(i) => i.id}
+      numColumns={numColumns}
+      columnWrapperStyle={styles.demoRow}
+      ListHeaderComponent={<Text style={styles.demoHeader}>Your books</Text>}
+      renderItem={({ item }) => (
+        <Pressable
+          style={styles.demoTile}
+          onPress={() => router.push(`/book/saved/${item.id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`Read: ${item.title}`}
+        >
+          <BookCover title={item.title} />
+          <Text style={styles.demoTileTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.demoTileMeta}>{item.unitCount} topics</Text>
+        </Pressable>
+      )}
+    />
+  );
+}
+
 // The Library: finished books compiled to EPUB3 and stored on this device,
 // shown as a cover shelf (Calibre-style). Authored books open in the in-app
 // reader; imported EPUBs (no book.json) open via the OS share sheet. Any EPUB
 // can be added with "Import EPUB".
+//
+// Demo builds swap in DemoLibrary so the tab shows the seeded books for reading.
 export default function LibraryScreen() {
+  return IS_DEMO ? <DemoLibrary /> : <EpubLibrary />;
+}
+
+function EpubLibrary() {
   const router = useRouter();
   const [items, setItems] = useState<EpubMeta[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -218,6 +269,18 @@ export default function LibraryScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Demo Library (bundled-books shelf)
+  demoShelf: { flex: 1, backgroundColor: colors.background },
+  demoContent: { padding: spacing.md, maxWidth: MAX_WIDE_WIDTH, width: "100%", alignSelf: "center" },
+  demoRow: { gap: spacing.md },
+  demoHeader: {
+    fontSize: typography.sizeXl, fontWeight: "700", color: colors.text,
+    marginBottom: spacing.md,
+  },
+  demoTile: { flex: 1, maxWidth: "50%", marginBottom: spacing.md, gap: spacing.xs },
+  demoTileTitle: { fontSize: typography.sizeSm, fontWeight: "700", color: colors.text },
+  demoTileMeta: { fontSize: typography.sizeXs, color: colors.textMuted },
+
   list: { flex: 1, backgroundColor: colors.background },
   gridContent: { padding: spacing.md },
   gridWide: { maxWidth: MAX_WIDE_WIDTH, width: "100%", alignSelf: "center" },
