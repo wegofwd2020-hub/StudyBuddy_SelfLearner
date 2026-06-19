@@ -36,7 +36,8 @@
     ],
     "scheme": "studybuddy-q",
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/demos/mentible"
     }
   }
 }
