@@ -100,6 +100,29 @@ def test_delete_user(admin_client):
     assert admin_client.delete(f"{ADMIN}/users/{TARGET}").status_code == 404  # already gone
 
 
+def test_actions_are_audited(admin_client):
+    admin_client.post(f"{ADMIN}/users/{TARGET}/suspend")
+    admin_client.post(f"{ADMIN}/users/{TARGET}/reactivate")
+    r = admin_client.get(f"{ADMIN}/audit")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] >= 2
+    recent = [(e["action"], e["target_sub"], e["actor_sub"]) for e in body["entries"]]
+    assert ("user.suspend", TARGET, _ADMIN_PRINCIPAL.sub) in recent
+    assert ("user.reactivate", TARGET, _ADMIN_PRINCIPAL.sub) in recent
+    # never any secret in the trail
+    assert all("secret" not in str(e).lower() for e in body["entries"])
+
+
+def test_delete_audit_outlives_the_account(admin_client):
+    admin_client.delete(f"{ADMIN}/users/{TARGET}")
+    # account is gone…
+    assert admin_client.get(f"{ADMIN}/users/{TARGET}").status_code == 404
+    # …but the delete is still attributable in the trail.
+    entries = admin_client.get(f"{ADMIN}/audit").json()["entries"]
+    assert ("user.delete", TARGET) in [(e["action"], e["target_sub"]) for e in entries]
+
+
 def test_non_admin_forbidden():
     """An ordinary verified user (not in the allowlist) gets 403 from the gate."""
     app.dependency_overrides[require_user] = lambda: Principal(
