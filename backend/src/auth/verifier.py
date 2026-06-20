@@ -10,6 +10,10 @@ Vendor-agnostic by construction: the verifier takes an issuer, an audience, and 
 `key_resolver` that maps a token to its signing key. Production wires the resolver
 to a cached `PyJWKClient` (Supabase JWKS, O1); tests inject a local public key, so
 no network is touched in CI.
+
+`verify()` returns a `VerifiedToken` (identity claims only) — the portable
+verify→claims seam (ADR-019 D4 / ADR-020 D8). Mapping it to a `Principal` and
+deriving authorization (e.g. `is_super_admin`) is the app's job, in `deps.py`.
 """
 
 from __future__ import annotations
@@ -19,7 +23,7 @@ from typing import Any
 
 import jwt
 
-from backend.src.auth.principal import AuthError, Principal
+from backend.src.auth.principal import AuthError, VerifiedToken
 
 # Supabase signs access tokens with asymmetric keys (RS256/ES256). HS256 (the
 # legacy shared-secret mode) is deliberately excluded: a JWKS verifier must never
@@ -31,14 +35,14 @@ KeyResolver = Callable[[str], Any]
 
 
 class JwtVerifier:
-    """Verifies IdP JWTs against a JWKS and returns a `Principal`."""
+    """Verifies IdP JWTs against a JWKS and returns a `VerifiedToken`."""
 
     def __init__(self, *, issuer: str, audience: str, key_resolver: KeyResolver) -> None:
         self._issuer = issuer
         self._audience = audience
         self._resolve = key_resolver
 
-    def verify(self, token: str) -> Principal:
+    def verify(self, token: str) -> VerifiedToken:
         try:
             key = self._resolve(token)
             claims: dict[str, Any] = jwt.decode(
@@ -57,10 +61,11 @@ class JwtVerifier:
         if not isinstance(sub, str) or not sub:
             raise AuthError("token missing a usable sub claim")
         email = claims.get("email")
-        return Principal(
+        return VerifiedToken(
             sub=sub,
             email=email if isinstance(email, str) and email else None,
             issuer=str(claims["iss"]),
+            raw_claims=claims,
         )
 
 
