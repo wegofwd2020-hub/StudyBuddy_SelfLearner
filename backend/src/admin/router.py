@@ -16,11 +16,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from backend.src.accounts import repo
 from backend.src.accounts.models import Account
 from backend.src.accounts.schemas import (
+    AdminAuditEntryView,
+    AdminAuditList,
     AdminUserDetail,
     AdminUserList,
     AdminUserSummary,
     CredentialView,
 )
+from backend.src.admin import audit
 from backend.src.auth.deps import require_super_admin
 from backend.src.auth.principal import Principal
 from backend.src.db.deps import get_conn
@@ -56,10 +59,19 @@ def _detail(a: Account, creds) -> AdminUserDetail:
     )
 
 
-def _audit(actor: Principal, action: str, target_sub: str) -> None:
-    """Record an admin action (ADR-020 D5). Actor + action + target only — no secrets."""
+async def _audit(conn: asyncpg.Connection, actor: Principal, action: str, target_sub: str) -> None:
+    """Record an admin action (ADR-020 D5): structlog + a durable admin_audit row.
+    Actor + action + target only — never secrets. Called inside the action's
+    transaction so the action and its audit row commit together."""
     logger.info(
         "admin.action",
+        actor_sub=actor.sub,
+        actor_email=actor.email,
+        action=action,
+        target_sub=target_sub,
+    )
+    await audit.record(
+        conn,
         actor_sub=actor.sub,
         actor_email=actor.email,
         action=action,
@@ -102,10 +114,11 @@ async def suspend_user(
     admin: Principal = Depends(require_super_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ) -> AdminUserSummary:
-    account = await repo.set_account_suspended(conn, idp_sub=sub, suspended=True)
-    if account is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no such user")
-    _audit(admin, "user.suspend", sub)
+    async with conn.transaction():
+        account = await repo.set_account_suspended(conn, idp_sub=sub, suspended=True)
+        if account is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no such user")
+        await _audit(conn, admin, "user.suspend", sub)
     return _summary(account)
 
 
@@ -115,10 +128,11 @@ async def reactivate_user(
     admin: Principal = Depends(require_super_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ) -> AdminUserSummary:
-    account = await repo.set_account_suspended(conn, idp_sub=sub, suspended=False)
-    if account is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no such user")
-    _audit(admin, "user.reactivate", sub)
+    async with conn.transaction():
+        account = await repo.set_account_suspended(conn, idp_sub=sub, suspended=False)
+        if account is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no such user")
+        await _audit(conn, admin, "user.reactivate", sub)
     return _summary(account)
 
 
@@ -128,9 +142,39 @@ async def delete_user(
     admin: Principal = Depends(require_super_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ) -> Response:
-    """Full account purge (credentials cascade). 404 if unknown. Audited."""
-    deleted = await repo.delete_account(conn, idp_sub=sub)
-    if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no such user")
-    _audit(admin, "user.delete", sub)
+    """Full account purge (credentials cascade). 404 if unknown. Audited.
+
+    The audit row outlives the account (no FK), so the delete stays attributable."""
+    async with conn.transaction():
+        deleted = await repo.delete_account(conn, idp_sub=sub)
+        if not deleted:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no such user")
+        await _audit(conn, admin, "user.delete", sub)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/audit", response_model=AdminAuditList)
+async def list_audit(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _admin: Principal = Depends(require_super_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+) -> AdminAuditList:
+    """The persisted admin-action trail (ADR-020 D5), newest first."""
+    entries = await audit.list_entries(conn, limit=limit, offset=offset)
+    total = await audit.count_entries(conn)
+    return AdminAuditList(
+        entries=[
+            AdminAuditEntryView(
+                actor_sub=e.actor_sub,
+                actor_email=e.actor_email,
+                action=e.action,
+                target_sub=e.target_sub,
+                created_at=e.created_at,
+            )
+            for e in entries
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )

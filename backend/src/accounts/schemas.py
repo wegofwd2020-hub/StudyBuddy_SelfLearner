@@ -53,6 +53,23 @@ class AdminUserList(BaseModel):
     offset: int
 
 
+class AdminAuditEntryView(BaseModel):
+    """One persisted admin-action audit row (ADR-020 D5). Metadata only."""
+
+    actor_sub: str
+    actor_email: str | None
+    action: str
+    target_sub: str | None
+    created_at: datetime
+
+
+class AdminAuditList(BaseModel):
+    entries: list[AdminAuditEntryView]
+    total: int
+    limit: int
+    offset: int
+
+
 class CredentialUpsert(BaseModel):
     source: str  # validated against CREDENTIAL_SOURCES in the route
     status: str = "unverified"
