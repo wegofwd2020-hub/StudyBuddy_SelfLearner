@@ -73,6 +73,24 @@ class Settings(BaseSettings):
         default="", description="override JWKS URL; empty = derive from issuer"
     )
 
+    # ── Super-admin operator role (ADR-020 D1) ────────────────────────────────
+    # A small allowlist of verified IdP identities that get the runtime admin
+    # console. An account is super-admin iff its JWKS-VERIFIED email (or sub) is
+    # listed here — NOT a JWT claim a client could assert (D2), NOT a DB role at
+    # MVP. Comma-separated; empty/unset ⇒ NO admins (safe default; the anonymous
+    # demo and ordinary users are unaffected). This is the human OPERATOR role
+    # (ADR-020) and is deliberately distinct from the system_owner_secret above
+    # (ADR-018) — that is a cryptographic signing capability, this is who-may-ask
+    # (ADR-020 D4). Email is the operator-friendly key (matched case-insensitively
+    # against the verified `email` claim); sub is allowed for stability if an email
+    # ever changes.
+    super_admin_emails: str = Field(
+        default="", description="comma-separated admin emails; empty = no admins"
+    )
+    super_admin_subs: str = Field(
+        default="", description="comma-separated admin IdP subs; empty = none"
+    )
+
     # ── Account store (ADR-014 D2/D8) — Supabase Postgres via asyncpg ──────────
     # The account + per-provider credential-set DB. OPTIONAL, like identity: empty
     # = no DB (anonymous demo; the pool is None and account routes are unavailable),

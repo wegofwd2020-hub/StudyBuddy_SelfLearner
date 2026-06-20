@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
 
 from backend.src.auth import deps
-from backend.src.auth.principal import AuthError, Principal
+from backend.src.auth.principal import AuthError, VerifiedToken
 from backend.src.auth.verifier import JwtVerifier
 
 ISSUER = "https://proj.supabase.co/auth/v1"
@@ -45,12 +45,14 @@ def _verifier(key=_KEY) -> JwtVerifier:
     return JwtVerifier(issuer=ISSUER, audience=AUDIENCE, key_resolver=lambda _t: key.public_key())
 
 
-def test_valid_token_yields_principal():
-    p = _verifier().verify(_mint())
-    assert isinstance(p, Principal)
-    assert p.sub == "user-uuid-123"
-    assert p.email == "learner@example.com"
-    assert p.issuer == ISSUER
+def test_valid_token_yields_verified_token():
+    vt = _verifier().verify(_mint())
+    assert isinstance(vt, VerifiedToken)
+    assert vt.sub == "user-uuid-123"
+    assert vt.email == "learner@example.com"
+    assert vt.issuer == ISSUER
+    # raw_claims carries the full verified claim set for per-app mapping (D8).
+    assert vt.raw_claims["aud"] == AUDIENCE
 
 
 def test_missing_email_is_none():
