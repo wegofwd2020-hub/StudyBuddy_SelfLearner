@@ -103,7 +103,5 @@ def require_super_admin(principal: Principal = Depends(require_user)) -> Princip
     `/api/v1/admin/*` surface. The 403 body names no identity.
     """
     if not principal.is_super_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="super-admin required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="super-admin required")
     return principal

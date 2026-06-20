@@ -125,9 +125,7 @@ def _mint(**overrides) -> str:
 def _verifier():
     from backend.src.auth.verifier import JwtVerifier
 
-    return JwtVerifier(
-        issuer=ISSUER, audience=AUDIENCE, key_resolver=lambda _t: _KEY.public_key()
-    )
+    return JwtVerifier(issuer=ISSUER, audience=AUDIENCE, key_resolver=lambda _t: _KEY.public_key())
 
 
 def _req(authorization: str | None = None):

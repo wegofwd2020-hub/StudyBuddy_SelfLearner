@@ -25,7 +25,9 @@ def _parse_csv(raw: str) -> frozenset[str]:
 # Computed once at import from config (like the verifier). Emails are matched
 # case-insensitively, so normalise to lower-case here; subs are opaque, matched
 # exactly. Tests monkeypatch these module-level sets to vary the allowlist.
-_ADMIN_EMAILS: frozenset[str] = frozenset(e.lower() for e in _parse_csv(settings.super_admin_emails))
+_ADMIN_EMAILS: frozenset[str] = frozenset(
+    e.lower() for e in _parse_csv(settings.super_admin_emails)
+)
 _ADMIN_SUBS: frozenset[str] = _parse_csv(settings.super_admin_subs)
 
 
