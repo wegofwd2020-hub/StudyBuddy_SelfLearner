@@ -14,7 +14,9 @@ seam — we add a *derived* admin flag, not an IdP claim or a DB role at MVP).
 **Relates:** **ADR-005** (managed-key vault & plans — the plan/managed-key admin
 operations depend on the vault build and are forward-looking here), **ADR-001**
 (no-key-in-logs / never-display-key discipline — the admin surface never returns key
-material).
+material), **ADR-019** (common platform libraries — D8 below applies its
+package-vs-per-app boundary to this role; the authentication seam is shared, the
+authorization is not).
 **Amends:** the `CLAUDE.md` non-negotiable **"Single-tenant by user, no RLS… no
 multi-tenancy."** ADR-018 already narrowed it with one principal *above* the flat
 model; this ADR narrows it further by allowing a **deliberate, metadata-only,
@@ -145,6 +147,48 @@ purge). Disabling/deleting a user **at the Supabase IdP** (so they can't re-mint
 token) requires the Supabase **service-role key** — a separate, server-only managed
 secret, used only if we choose IdP-level management (**O3**). Not wired at MVP.
 
+### D8 — Portability across the product family (shared auth seam, per-app authorization)
+
+This role must be reusable in **Pramana** and **kathai-chithiram** without forcing a
+shared authorization model on three products that disagree at the root. We apply the
+**ADR-019** package-vs-per-app boundary, stated once there:
+**`wegofwd-identity` answers "is this token valid and who does it claim to be?"; each
+app answers "is that caller an admin, and what may they do?"**
+
+**What is shared (packaged → `wegofwd-identity`).** Only the stateless authentication
+slice: JWKS fetch/cache/rotation + JWT signature/`iss`/`aud`/`exp` verification,
+returning a **minimal `VerifiedToken{ sub, email, issuer, raw_claims }`** — no DB, no
+`Principal`, no roles. This is the slice **ADR-019 D4** named; its "second consumer"
+trigger is **now met** — Pramana already ships JWKS auth
+(`pramana/services/auth.py`) and Mentible has its own (`backend/src/auth/verifier.py`).
+
+**What stays per-app (a copyable *pattern*, not shared code).** The super-admin gate
+is the ~30-line idiom **parse config allowlist → derive `is_super_admin` → expose a
+`require_super_admin` dependency**, built *on top of* the shared seam. Each product
+maps `VerifiedToken → its own Principal` and derives admin its own way, because the
+authorization models genuinely differ:
+
+| | Mentible (this ADR) | Pramana (today) | kathai-chithiram |
+|---|---|---|---|
+| Principal | `{sub,email,issuer}`, flat, no-DB | `{user_id,tenant_id}`, DB, multi-tenant | unknown / unstarted |
+| Admin model | one config-allowlist tier (D1) | existing 5-role DB RBAC | TBD |
+
+Forcing those into one shared authz abstraction would fight both (ADR-019 D4/D5:
+roles/entitlements are the "should drift, keep per-app" category). The admin
+**operations** themselves (D3's four areas) are inherently product-shaped and likewise
+stay per-app.
+
+**Sequencing — pattern-first (ADR-019 Sequencing step 3).** Implement ticket #1
+**in-repo now**, but code the verifier to return a `VerifiedToken`-shaped result so the
+extractable seam already has its final *shape*; extract `wegofwd-identity` (verify→
+claims only) later, when a consumer is actually wired to it, so the package API is
+frozen against two real callers rather than one-and-a-half. No cross-repo package work
+blocks Mentible's admin gate.
+
+**Guardrail:** `wegofwd-identity` must **never** grow roles, a `Principal`, a DB, or
+entitlements — if a "shared admin/RBAC library" is ever proposed, that is a new ADR,
+not a drift of this one.
+
 ---
 
 ## Open decisions
@@ -194,7 +238,9 @@ signing secret** — leaving the items in Open Decisions to the decision-maker.
 ## Follow-up tickets
 
 1. Config allowlist (`SUPER_ADMIN_EMAILS` / `SUPER_ADMIN_SUBS`) + derived
-   `Principal.is_super_admin` + `require_super_admin` dependency (D1, D2).
+   `Principal.is_super_admin` + `require_super_admin` dependency (D1, D2). Shape the
+   verifier to return a `VerifiedToken{sub,email,issuer,raw_claims}` and map it to
+   `Principal` in app code, so the future `wegofwd-identity` seam is import-aligned (D8).
 2. `/api/v1/admin/*` user-management endpoints — list/get/suspend/delete, **metadata
    only** (D3.1).
 3. Server-mediated default-library `publish`/`unpublish` endpoint reusing the ADR-018

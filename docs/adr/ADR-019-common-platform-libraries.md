@@ -1,7 +1,27 @@
 # ADR-019 — Common platform functionality as installable libraries (extract on the second consumer)
 
-**Status:** Proposed — 2026-06-15
+**Status:** Proposed — 2026-06-15 · _amended 2026-06-19: D4's "second consumer"
+trigger is now MET_
 **Decision-maker:** Sivakumar Mambakkam
+
+> **Amendment — 2026-06-19 (D4 trigger met).** D4 made `wegofwd-identity` extraction
+> conditional on "a second product that actually needs it." That condition is now
+> satisfied: **Pramana has built JWKS auth** (`pramana/services/auth.py` —
+> `TokenVerifier`/`KeySource` verifying an OIDC JWT via JWKS → a `Principal`), and
+> **Mentible has built its own** (`backend/src/auth/verifier.py`). Two real consumers
+> now exist. **Greenlight extracting `wegofwd-identity`, scoped strictly to the D4
+> "extractable" slice** — the stateless **JWKS fetch/cache + JWT verify → minimal
+> verified-claims** (`{sub, email, issuer, raw_claims}`). The two consumers confirm D4's
+> per-app boundary is real and must hold: their **`Principal` shapes differ** (Mentible
+> `{sub,email,issuer}`, flat/no-DB/anonymous-first vs Pramana `{user_id,tenant_id}`,
+> DB-resolved/multi-tenant) and their **authorization models differ at the root**
+> (Mentible's deliberately flat config-allowlist tier per **ADR-020** vs Pramana's
+> existing DB-backed multi-tenant 5-role RBAC). So the package exposes **verify→claims
+> only**; the `Principal` mapping, roles, tenancy and entitlements stay per-app — exactly
+> the "should drift, keep per-app" category of D4/D5. The **ADR-018/ADR-020 super-admin
+> *pattern*** (config allowlist → derived `is_super_admin` → `require_*` dependency)
+> travels as a **copyable convention built on the seam, not as shared authorization
+> code** (ADR-020 D8). Sequencing is **pattern-first** (see Sequencing step 3).
 **Generalises:** **ADR-012** (which extracted *one* piece of common infra — the LLM
 seam — into the `wegofwd-llm` package; this ADR sets the *general policy* for the
 rest of the common platform surface, plus concrete first rulings).
@@ -157,10 +177,19 @@ the third instance** — a wrong abstraction costs more than a duplicated file.
    product specifics.)*
 2. **Here, next:** build identity in Mentible against ADR-014 (JWKS verify → principal),
    **in-repo**, no premature package. This is the first implementation.
-3. **On the second consumer:** when Pramana or kathai-chithiram needs authenticated
-   users, extract the thin verify-→-principal core into **`wegofwd-identity`** — by then
-   the interface has been validated against two real callers. Entitlements/credential-
-   set/data-model stay per-app.
+3. **Second consumer reached — pattern-first (amended 2026-06-19).** The trigger is met
+   (Pramana + Mentible both have JWKS auth). Order:
+   1. Build Mentible's super-admin gate **in-repo** (ADR-020 ticket #1), but code the
+      verifier to return a **`VerifiedToken{sub, email, issuer, raw_claims}`** so the
+      extractable seam already has its final *shape*. Map `VerifiedToken → Principal`
+      and derive `is_super_admin` in app code.
+   2. **Extract `wegofwd-identity`** (verify→claims only) when a consumer is actually
+      wired to it — fold Mentible + Pramana onto the package then, so the API is frozen
+      against two real callers, not one-and-a-half. Tag `v0.1.0`; its own ADR-012-style
+      record.
+   3. The `Principal` mapping, role/tenancy model, entitlements, credential-set and
+      data-model **stay per-app**; the super-admin gate travels as a copyable pattern
+      (ADR-020 D8), not shared authz code.
 4. **Each step is its own ADR-012-style record** (or an amendment here) noting what
    moved and what stayed.
 
