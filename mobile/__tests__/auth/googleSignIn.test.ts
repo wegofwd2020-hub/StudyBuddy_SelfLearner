@@ -7,7 +7,7 @@ jest.mock("expo-web-browser", () => ({
   openAuthSessionAsync: jest.fn(),
 }));
 jest.mock("expo-auth-session", () => ({
-  makeRedirectUri: jest.fn(() => "studybuddy-q://auth-callback"),
+  makeRedirectUri: jest.fn(() => "mentible://auth-callback"),
 }));
 
 import * as WebBrowser from "expo-web-browser";
@@ -37,7 +37,7 @@ describe("signInWithGoogle (native)", () => {
   it("exchanges the returned code for a session on success", async () => {
     openAuthSessionAsync.mockResolvedValue({
       type: "success",
-      url: "studybuddy-q://auth-callback?code=abc123",
+      url: "mentible://auth-callback?code=abc123",
     });
     const { client, auth } = makeClient();
 
@@ -45,7 +45,7 @@ describe("signInWithGoogle (native)", () => {
 
     expect(auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: "google",
-      options: { redirectTo: "studybuddy-q://auth-callback", skipBrowserRedirect: true },
+      options: { redirectTo: "mentible://auth-callback", skipBrowserRedirect: true },
     });
     expect(auth.exchangeCodeForSession).toHaveBeenCalledWith("abc123");
     expect(res.error).toBeNull();
@@ -76,7 +76,7 @@ describe("signInWithGoogle (native)", () => {
   it("errors when the callback URL has no code", async () => {
     openAuthSessionAsync.mockResolvedValue({
       type: "success",
-      url: "studybuddy-q://auth-callback",
+      url: "mentible://auth-callback",
     });
     const { client, auth } = makeClient();
 

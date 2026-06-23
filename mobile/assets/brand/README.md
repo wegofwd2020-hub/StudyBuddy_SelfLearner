@@ -92,9 +92,10 @@ The red-orange family is the **production brand**. Current usage:
 Notes:
 - The **white-bg lockup** sits on a light card (`#fff`) on the dark UI; the
   **transparent mark** is used where a card would be intrusive (concept blocks).
-- App display **name** is "Mentible" (`expo.name` + `expo.web.name`); the
-  `slug`/`scheme`/`android.package` keep the legacy `studybuddy-q` identity —
-  **do not rename those** until the trademark is cleared (build/store identity).
+- App display **name** is "Mentible" (`expo.name` + `expo.web.name`); the deep-link
+  `scheme` is now `mentible` (switched before the first full APK shipped). The
+  `slug`/`android.package` keep the legacy `studybuddy-q` build/store identity —
+  **do not rename those** until the trademark is cleared.
 - To re-cut the launcher set, produce a **square, text-free** 1024² crop of the
   mark and overwrite `assets/{icon,adaptive-icon,splash,favicon}.png`.
 

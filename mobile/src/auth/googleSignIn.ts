@@ -20,7 +20,7 @@ WebBrowser.maybeCompleteAuthSession();
 export async function signInWithGoogle(
   client: SupabaseClient,
 ): Promise<{ error: string | null }> {
-  const redirectTo = makeRedirectUri({ scheme: "studybuddy-q", path: "auth-callback" });
+  const redirectTo = makeRedirectUri({ scheme: "mentible", path: "auth-callback" });
 
   if (Platform.OS === "web") {
     const { error } = await client.auth.signInWithOAuth({ provider: "google" });

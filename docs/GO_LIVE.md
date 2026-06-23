@@ -29,7 +29,7 @@ unchanged until the env is set.
    `deploy` user's sudo is scoped (it can `docker compose` but not edit `.env.demo` nor
    `git -C /opt/mentible pull`). Steps 1–4 below need root.
 3. **Supabase dashboard** (Google go-live): (a) enable the **Google** provider with a
-   Google OAuth client id+secret; (b) allowlist redirect `studybuddy-q://auth-callback`.
+   Google OAuth client id+secret; (b) allowlist redirect `mentible://auth-callback`.
 4. **Re-enable "Confirm email"** in Supabase Auth for production (it's off for testing).
 
 ## Deploy steps (on the VPS, as root)
