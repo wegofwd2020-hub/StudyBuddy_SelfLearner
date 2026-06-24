@@ -45,7 +45,12 @@ describe("signInWithGoogle (native)", () => {
 
     expect(auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: "google",
-      options: { redirectTo: "mentible://auth-callback", skipBrowserRedirect: true },
+      options: {
+        redirectTo: "mentible://auth-callback",
+        skipBrowserRedirect: true,
+        // Forces the Google account chooser on every sign-in (no silent re-login).
+        queryParams: { prompt: "select_account" },
+      },
     });
     expect(auth.exchangeCodeForSession).toHaveBeenCalledWith("abc123");
     expect(res.error).toBeNull();

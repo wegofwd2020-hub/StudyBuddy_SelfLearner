@@ -22,14 +22,22 @@ export async function signInWithGoogle(
 ): Promise<{ error: string | null }> {
   const redirectTo = makeRedirectUri({ scheme: "mentible", path: "auth-callback" });
 
+  // `prompt: select_account` forces Google to show the account chooser every time,
+  // instead of silently re-using an existing browser Google session — so after a
+  // sign-out the next sign-in is a deliberate choice, not an automatic re-login.
+  const queryParams = { prompt: "select_account" };
+
   if (Platform.OS === "web") {
-    const { error } = await client.auth.signInWithOAuth({ provider: "google" });
+    const { error } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: { queryParams },
+    });
     return { error: error?.message ?? null };
   }
 
   const { data, error } = await client.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo, skipBrowserRedirect: true },
+    options: { redirectTo, skipBrowserRedirect: true, queryParams },
   });
   if (error) return { error: error.message };
   if (!data?.url) return { error: "Could not start Google sign-in." };
