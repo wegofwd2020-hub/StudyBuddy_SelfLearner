@@ -8,7 +8,7 @@ import { COST_LABEL, PROVIDER_GUIDES } from "@/constants/providerGuides";
 
 // Internal routes a help link may point at (kept a union so it satisfies
 // expo-router's typed routes without a cast).
-export type HelpHref = "/settings" | "/diagram-types";
+export type HelpHref = "/settings" | "/diagram-types" | "/sign-in";
 
 export type HelpBlock =
   | { kind: "text"; text: string }
@@ -81,6 +81,47 @@ export const HELP_TOPICS: HelpTopic[] = [
           "Save the finished book to your Library as an EPUB you can read or export.",
         ],
       },
+    ],
+  },
+  {
+    id: "getting-started-account",
+    title: "Create your account & sign in",
+    keywords: [
+      "account", "sign in", "signin", "sign up", "signup", "login", "log in",
+      "register", "google", "email", "password", "confirm", "verify", "sync",
+    ],
+    blocks: [
+      {
+        kind: "text",
+        text: "An account is optional but recommended: it syncs your library and provider settings across your devices. You can sign up with an email and password, or continue with Google. You can always read the included books and use a BYOK key without an account.",
+      },
+      {
+        kind: "steps",
+        steps: [
+          "Open the sign-in screen (or the first-run wizard) and choose Create account.",
+          "Enter your email and a password (at least 6 characters), or tap Continue with Google.",
+          "If you signed up with email, check your inbox and tap the confirmation link, then sign in.",
+          "Once signed in, your library and provider settings sync automatically.",
+        ],
+      },
+      {
+        kind: "defs",
+        defs: [
+          {
+            term: "Didn't get the confirmation email",
+            def: "Check your spam folder and that the address is correct. Re-running sign-up resends the link.",
+          },
+          {
+            term: "“Continue with Google” did nothing",
+            def: "The sign-in browser was likely dismissed. Tap Continue with Google again and complete the Google prompt.",
+          },
+          {
+            term: "Sign-in isn't available",
+            def: "Some builds (including the demo) run without accounts — you can still read the included books and use a BYOK key without signing in.",
+          },
+        ],
+      },
+      { kind: "link", label: "Open sign-in →", href: "/sign-in" },
     ],
   },
   {

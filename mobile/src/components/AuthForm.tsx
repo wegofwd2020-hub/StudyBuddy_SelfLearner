@@ -9,8 +9,11 @@ import { colors, radius, spacing, typography } from "@/constants/theme";
 // `unavailable` auth states — this component assumes it is only rendered when a
 // user can actually sign in, and calls `onAuthenticated` once they have.
 export interface AuthFormProps {
-  // Invoked after a successful sign-in / sign-up / Google auth (no error).
-  onAuthenticated?: () => void;
+  // Invoked after a successful sign-in / sign-up / Google auth (no error). The
+  // `mode` says which action completed — useful because a successful email
+  // sign-up may still require email confirmation before a session exists, so the
+  // caller can show a "check your email" hint rather than assume signed-in.
+  onAuthenticated?: (info: { mode: "sign_in" | "sign_up" }) => void;
   initialMode?: "sign_in" | "sign_up";
   // Show the built-in title + subtitle (the screen wants it; the wizard supplies
   // its own header via the scaffold and sets this false).
@@ -40,7 +43,7 @@ export function AuthForm({
       setError(err);
       return;
     }
-    onAuthenticated?.();
+    onAuthenticated?.({ mode });
   };
 
   const onGoogle = async () => {
@@ -52,7 +55,8 @@ export function AuthForm({
       setError(err);
       return;
     }
-    onAuthenticated?.();
+    // Google is an interactive sign-in (never a deferred email confirmation).
+    onAuthenticated?.({ mode: "sign_in" });
   };
 
   const anyBusy = busy || googleBusy;

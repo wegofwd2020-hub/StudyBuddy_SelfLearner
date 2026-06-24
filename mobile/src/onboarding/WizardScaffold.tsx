@@ -66,20 +66,24 @@ export function WizardScaffold({
         {children}
       </ScrollView>
 
-      <Pressable
-        style={[styles.primaryBtn, (primaryDisabled || primaryBusy) && styles.primaryBtnDisabled]}
-        onPress={onPrimary}
-        disabled={primaryDisabled || primaryBusy || !onPrimary}
-        accessibilityRole="button"
-        accessibilityLabel={primaryLabel}
-        accessibilityState={{ disabled: primaryDisabled || primaryBusy }}
-      >
-        {primaryBusy ? (
-          <ActivityIndicator color={colors.primaryText} />
-        ) : (
-          <Text style={styles.primaryBtnText}>{primaryLabel}</Text>
-        )}
-      </Pressable>
+      {/* A step that supplies no onPrimary (e.g. signup, whose AuthForm has its
+          own CTAs) gets no scaffold primary button — just the skip link. */}
+      {onPrimary ? (
+        <Pressable
+          style={[styles.primaryBtn, (primaryDisabled || primaryBusy) && styles.primaryBtnDisabled]}
+          onPress={onPrimary}
+          disabled={primaryDisabled || primaryBusy}
+          accessibilityRole="button"
+          accessibilityLabel={primaryLabel}
+          accessibilityState={{ disabled: primaryDisabled || primaryBusy }}
+        >
+          {primaryBusy ? (
+            <ActivityIndicator color={colors.primaryText} />
+          ) : (
+            <Text style={styles.primaryBtnText}>{primaryLabel}</Text>
+          )}
+        </Pressable>
+      ) : null}
 
       {skipLabel && onSkip ? (
         <Pressable onPress={onSkip} accessibilityRole="button" accessibilityLabel={skipLabel} hitSlop={8}>
