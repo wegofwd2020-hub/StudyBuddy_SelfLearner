@@ -41,6 +41,21 @@ def test_get_lazily_provisions_account(client):
     assert body["sub"] == TEST_SUB
     assert body["email"] == "t@example.com"
     assert body["credentials"] == []
+    # An ordinary verified user is not an operator (allowlist-driven, D2).
+    assert body["is_super_admin"] is False
+
+
+def test_super_admin_flag_surfaces_for_an_operator():
+    """The account view reflects principal.is_super_admin (config allowlist, D2)."""
+    app.dependency_overrides[require_active_user] = lambda: Principal(
+        sub="acct-admin-sub", email="boss@x.com", issuer="https://test", is_super_admin=True
+    )
+    try:
+        with TestClient(app) as c:
+            assert c.get(ACCOUNT).json()["is_super_admin"] is True
+            c.delete(ACCOUNT)
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_put_then_list_credential(client):

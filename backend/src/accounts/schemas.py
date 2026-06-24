@@ -45,6 +45,9 @@ class AccountView(BaseModel):
     sub: str
     email: str | None
     credentials: list[CredentialView]
+    # Whether this caller is an operator (config allowlist; derived at request time,
+    # never trusted from a token claim — ADR-020 D2). Drives the admin entry point.
+    is_super_admin: bool = False
 
 
 class AdminUserSummary(BaseModel):

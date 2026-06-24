@@ -116,6 +116,14 @@ export default function RootLayout() {
           name="usage"
           options={{ title: "Usage", headerBackTitle: "Settings" }}
         />
+        <Stack.Screen
+          name="admin"
+          options={{ title: "Admin", headerBackTitle: "Account" }}
+        />
+        <Stack.Screen
+          name="admin/[sub]"
+          options={{ title: "User", headerBackTitle: "Users" }}
+        />
       </Stack>
       {/* First-run onboarding (sign up → add a key → reading tour). The wizard
           self-manages which steps apply per build (demo / unconfigured auth), so
