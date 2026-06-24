@@ -6,6 +6,7 @@ import { useAccount } from "@/hooks/useAccount";
 import { PageContainer } from "@/components/PageContainer";
 import { PROVIDERS } from "@/constants/providers";
 import { deleteApiKey } from "@/secure/keyStore";
+import { clearDeviceData } from "@/device/clearDeviceData";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
 export default function AccountScreen() {
@@ -45,6 +46,32 @@ export default function AccountScreen() {
               router.replace("/settings");
             } catch (e) {
               Alert.alert("Couldn’t delete account", e instanceof Error ? e.message : "Try again.");
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const onClearDevice = () => {
+    Alert.alert(
+      "Sign out & clear this device?",
+      "Removes everything stored on this device — your API keys, local library and books, and onboarding — then signs you out. Your synced account stays; signing back in starts fresh on this device.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear & sign out",
+          style: "destructive",
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await clearDeviceData();
+              await signOut();
+              router.replace("/settings");
+            } catch (e) {
+              Alert.alert("Couldn’t clear device", e instanceof Error ? e.message : "Try again.");
             } finally {
               setBusy(false);
             }
@@ -130,6 +157,10 @@ export default function AccountScreen() {
 
         <Pressable style={styles.secondaryButton} onPress={onClearLocalKeys}>
           <Text style={styles.secondaryText}>Clear device keys</Text>
+        </Pressable>
+
+        <Pressable style={styles.secondaryButton} disabled={busy} onPress={onClearDevice}>
+          <Text style={styles.secondaryText}>Sign out & clear this device</Text>
         </Pressable>
 
         <Pressable style={styles.deleteButton} disabled={busy} onPress={onDelete}>
