@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Modal, StyleSheet, Text, View } from "react-native";
+import { Modal, StyleSheet, View } from "react-native";
 import { useAuth } from "@/auth/AuthProvider";
 import { IS_DEMO } from "@/constants/demo";
-import { colors, spacing, typography } from "@/constants/theme";
-import { WizardScaffold } from "./WizardScaffold";
+import { spacing } from "@/constants/theme";
 import {
   applyStepStatuses,
   firstPendingStep,
@@ -13,48 +12,21 @@ import {
   type FirstRunState,
   type StepId,
 } from "./firstRunState";
+import { KeyStep } from "./steps/KeyStep";
+import { SignupStep } from "./steps/SignupStep";
+import { TourStep } from "./steps/TourStep";
+import type { WizardStepProps } from "./steps/types";
 
 // First-run onboarding coordinator. Replaces the old single OnboardingModal: it
 // chains three skippable, resumable steps (sign up → add an LLM key → reading
 // tour), showing the first step that is still `pending` and closing once they
-// are all done or skipped.
-//
-// Phase A wires the state + scaffold + step plumbing with placeholder bodies; the
-// real step UIs land in later phases:
-//   - signup → SignupStep (Phase C, wraps AuthForm)
-//   - key    → KeyStep    (Phase B, wraps ProviderKeyForm + provider guides)
-//   - tour   → TourStep   (Phase D, illustrated tab/reader cards)
-
-interface StepMeta {
-  index: number;
-  title: string;
-  subtitle: string;
-  helpTopic: string;
-  primaryLabel: string;
-}
-
-const STEP_META: Record<StepId, StepMeta> = {
-  signup: {
-    index: 0,
-    title: "Create your account",
-    subtitle: "An account syncs your library and provider settings across devices.",
-    helpTopic: "getting-started-account",
-    primaryLabel: "Continue",
-  },
-  key: {
-    index: 1,
-    title: "Add an LLM key",
-    subtitle: "Mentible is bring-your-own-key — pick a provider and paste a key to start generating.",
-    helpTopic: "provider-keys",
-    primaryLabel: "Continue",
-  },
-  tour: {
-    index: 2,
-    title: "Open a book & explore",
-    subtitle: "A quick tour of the tabs and how to open a book to read.",
-    helpTopic: "reading-a-book",
-    primaryLabel: "Got it",
-  },
+// are all done or skipped. Each step renders its own scaffold/body and reports
+// back via onDone/onSkip; this component owns the Modal, persisted progress, and
+// which step is visible.
+const STEP_COMPONENTS: Record<StepId, React.ComponentType<WizardStepProps>> = {
+  signup: SignupStep,
+  key: KeyStep,
+  tour: TourStep,
 };
 
 export function FirstRunWizard() {
@@ -101,31 +73,20 @@ export function FirstRunWizard() {
 
   if (!state || !visibleStep) return null;
 
-  const meta = STEP_META[visibleStep];
-  const advance = (status_: "done" | "skipped") => {
-    void setStepStatus(visibleStep, status_).then(setState);
+  const StepComponent = STEP_COMPONENTS[visibleStep];
+  const advance = (next: "done" | "skipped") => {
+    void setStepStatus(visibleStep, next).then(setState);
   };
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={() => advance("skipped")}>
       <View style={styles.overlay}>
-        <WizardScaffold
-          stepIndex={meta.index}
+        <StepComponent
+          stepIndex={STEP_ORDER.indexOf(visibleStep)}
           stepCount={STEP_ORDER.length}
-          title={meta.title}
-          subtitle={meta.subtitle}
-          helpTopic={meta.helpTopic}
-          primaryLabel={meta.primaryLabel}
-          onPrimary={() => advance("done")}
+          onDone={() => advance("done")}
           onSkip={() => advance("skipped")}
-        >
-          {/* TODO(Phase B/C/D): replace with the real step bodies (KeyStep /
-              SignupStep / TourStep). Placeholder keeps the chained flow testable. */}
-          <Text style={styles.placeholder}>
-            This step’s full walkthrough is coming next. For now, use Continue to move on or Skip to
-            handle it later from Help.
-          </Text>
-        </WizardScaffold>
+        />
       </View>
     </Modal>
   );
@@ -138,10 +99,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: spacing.lg,
-  },
-  placeholder: {
-    fontSize: typography.sizeSm,
-    color: colors.textSecondary,
-    lineHeight: 21,
   },
 });

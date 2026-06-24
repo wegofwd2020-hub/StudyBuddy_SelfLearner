@@ -3,6 +3,9 @@
 // maintainable, searchable, and deep-linkable by topic id. Add a topic by
 // appending to HELP_TOPICS; the screen renders + indexes it automatically.
 
+import { PROVIDERS } from "@/constants/providers";
+import { COST_LABEL, PROVIDER_GUIDES } from "@/constants/providerGuides";
+
 // Internal routes a help link may point at (kept a union so it satisfies
 // expo-router's typed routes without a cast).
 export type HelpHref = "/settings" | "/diagram-types";
@@ -36,6 +39,21 @@ export function blockText(blocks: HelpBlock[]): string {
       }
     })
     .join(" ");
+}
+
+// One "where to get a key" line per provider, derived from the provider guides
+// so the help page can't drift from the in-wizard guidance.
+function providerKeyDefs(): { term: string; def: string }[] {
+  return PROVIDERS.flatMap((p) => {
+    const g = PROVIDER_GUIDES[p.id];
+    if (!g) return [];
+    return [
+      {
+        term: p.label,
+        def: `${COST_LABEL[g.cost]}. Get a key at ${g.consoleLabel} (key looks like ${p.keyHint}).`,
+      },
+    ];
+  });
 }
 
 // Case-insensitive search over title + keywords + visible text. Empty query
@@ -73,6 +91,35 @@ export const HELP_TOPICS: HelpTopic[] = [
       {
         kind: "text",
         text: "Mentible is bring-your-own-key: you pay Anthropic directly. Your key is kept in the device keystore and sent per request to generate content — it is never logged or stored on a server.",
+      },
+      { kind: "link", label: "Open Settings →", href: "/settings" },
+    ],
+  },
+  {
+    id: "provider-keys",
+    title: "Choose a provider & get an API key",
+    keywords: [
+      "key", "api", "byok", "provider", "anthropic", "claude", "openai", "groq",
+      "openrouter", "gemini", "google", "free", "paid", "billing", "cost",
+    ],
+    blocks: [
+      {
+        kind: "text",
+        text: "Mentible is bring-your-own-key (BYOK): you connect your own LLM account and are billed by that provider directly. Your key is stored in the device keystore and sent per request — never logged or stored on a server. You can add more than one provider and switch between them in Settings.",
+      },
+      {
+        kind: "text",
+        text: "Want to try it free? Groq, Google Gemini and OpenRouter all have free tiers (output is draft-grade). Anthropic (Claude) gives the best quality for finished books but is paid.",
+      },
+      { kind: "defs", defs: providerKeyDefs() },
+      {
+        kind: "steps",
+        steps: [
+          "In Settings (or the first-run wizard), pick a provider.",
+          "Open that provider's console using the link and create an API key.",
+          "Copy the key and paste it into the key field — it's checked for the right shape and saved on your device.",
+          "Your key is verified the first time you generate; if it's wrong you'll see a clear error.",
+        ],
       },
       { kind: "link", label: "Open Settings →", href: "/settings" },
     ],

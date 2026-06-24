@@ -72,7 +72,7 @@ export default function SettingsScreen() {
 
       <View style={styles.labelRow}>
         <Text style={styles.sectionLabel}>API keys (BYOK)</Text>
-        <HelpButton topic="byok" label="BYOK" />
+        <HelpButton topic="provider-keys" label="BYOK" />
       </View>
       <Text style={styles.helpText}>
         Bring your own key per provider. Keys are stored in the Android Keystore
