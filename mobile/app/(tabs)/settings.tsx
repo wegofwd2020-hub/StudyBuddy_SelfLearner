@@ -1,27 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import {
-  deleteApiKey,
-  isValidApiKey,
-  loadApiKey,
-  maskApiKey,
-  saveApiKey,
-} from "@/secure/keyStore";
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, radius, spacing, typography } from "@/constants/theme";
-import { DEFAULT_PROVIDER_ID, PROVIDERS, providerInfo } from "@/constants/providers";
 import { GenerationParamsEditor } from "@/components/GenerationParamsEditor";
 import { HelpButton } from "@/components/HelpButton";
 import { PageContainer } from "@/components/PageContainer";
+import { ProviderKeyForm } from "@/components/ProviderKeyForm";
 import { useAuth } from "@/auth/AuthProvider";
 import { loadDefaultParams, saveDefaultParams } from "@/storage/settingsStore";
 import { DEFAULT_GENERATION_PARAMS, type GenerationParams } from "@/types/generationParams";
@@ -32,64 +16,11 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { status: authStatus, session } = useAuth();
   const { dyslexic, setDyslexic } = useFontMode();
-  const [draftKey, setDraftKey] = useState("");
-  const [savedMask, setSavedMask] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [params, setParams] = useState<GenerationParams>(DEFAULT_GENERATION_PARAMS);
-  // Which provider's BYOK key the section is managing (Phase 3b).
-  const [keyProvider, setKeyProvider] = useState(DEFAULT_PROVIDER_ID);
-
-  // Load the saved key for the selected provider whenever it changes; clear the
-  // draft so a half-typed key doesn't carry across providers.
-  useEffect(() => {
-    setDraftKey("");
-    setSavedMask(null);
-    loadApiKey(keyProvider).then((key) => {
-      if (key) setSavedMask(maskApiKey(key, keyProvider));
-    });
-  }, [keyProvider]);
 
   useEffect(() => {
     loadDefaultParams().then(setParams);
   }, []);
-
-  const handleSave = useCallback(async () => {
-    const trimmed = draftKey.trim();
-    const info = providerInfo(keyProvider);
-    if (!isValidApiKey(trimmed, keyProvider)) {
-      Alert.alert(
-        "Invalid key",
-        `${info.label} keys start with ${info.keyPrefix} and are at least 20 characters.`,
-      );
-      return;
-    }
-    setSaving(true);
-    try {
-      await saveApiKey(trimmed, keyProvider);
-      setSavedMask(maskApiKey(trimmed, keyProvider));
-      setDraftKey("");
-    } finally {
-      setSaving(false);
-    }
-  }, [draftKey, keyProvider]);
-
-  const handleClear = useCallback(() => {
-    Alert.alert(
-      "Remove API key",
-      "You will need to paste it again to generate with this provider.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            await deleteApiKey(keyProvider);
-            setSavedMask(null);
-          },
-        },
-      ],
-    );
-  }, [keyProvider]);
 
   // Persist the global default immediately on each change.
   const handleParamsChange = useCallback((next: GenerationParams) => {
@@ -149,73 +80,7 @@ export default function SettingsScreen() {
         behalf. They are never logged or stored on any server.
       </Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.providerRow}>
-        {PROVIDERS.map((p) => {
-          const selected = p.id === keyProvider;
-          return (
-            <Pressable
-              key={p.id}
-              onPress={() => setKeyProvider(p.id)}
-              style={[styles.providerChip, selected && styles.providerChipSelected]}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              accessibilityLabel={`Manage ${p.label} key`}
-            >
-              <Text style={[styles.providerChipText, selected && styles.providerChipTextSelected]}>
-                {p.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {savedMask ? (
-        <View style={styles.savedKeyCard}>
-          <View style={styles.savedKeyRow}>
-            <Text style={styles.savedKeyLabel}>Saved key</Text>
-            <Text style={styles.savedKeyMask}>{savedMask}</Text>
-          </View>
-          <Pressable
-            style={styles.clearBtn}
-            onPress={handleClear}
-            accessibilityRole="button"
-            accessibilityLabel="Remove saved API key"
-          >
-            <Text style={styles.clearBtnText}>Remove</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <Text style={styles.noKeyText}>No key saved</Text>
-      )}
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.keyInput}
-          placeholder={providerInfo(keyProvider).keyHint}
-          placeholderTextColor={colors.textMuted}
-          value={draftKey}
-          onChangeText={setDraftKey}
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry
-          returnKeyType="done"
-          onSubmitEditing={handleSave}
-          accessibilityLabel={`Paste ${providerInfo(keyProvider).label} API key`}
-        />
-        <Pressable
-          style={[
-            styles.saveBtn,
-            (!draftKey.trim() || saving) && styles.saveBtnDisabled,
-          ]}
-          onPress={handleSave}
-          disabled={!draftKey.trim() || saving}
-          accessibilityRole="button"
-          accessibilityLabel="Save API key"
-          accessibilityState={{ disabled: !draftKey.trim() || saving }}
-        >
-          <Text style={styles.saveBtnText}>{saving ? "Saving…" : "Save"}</Text>
-        </Pressable>
-      </View>
+      <ProviderKeyForm />
 
       <View style={styles.divider} />
 
@@ -289,29 +154,6 @@ const styles = StyleSheet.create({
   accountTitle: { color: colors.text, fontSize: typography.sizeMd, fontWeight: "600" },
   accountSub: { color: colors.textMuted, fontSize: typography.sizeXs, marginTop: 2 },
   accountChevron: { color: colors.textMuted, fontSize: typography.sizeXl },
-  // Provider selector for the BYOK key section — same beveled white/yellow as the
-  // param chips (selected = yellow, unselected = white; black glyphs).
-  providerRow: { flexDirection: "row", gap: spacing.sm, paddingVertical: spacing.xs },
-  providerChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.tileOffFace,
-    borderWidth: 2,
-    borderTopColor: colors.tileOffFace,
-    borderLeftColor: colors.tileOffFace,
-    borderBottomColor: colors.tileOffShadow,
-    borderRightColor: colors.tileOffShadow,
-  },
-  providerChipSelected: {
-    backgroundColor: colors.tileOnFace,
-    borderTopColor: colors.tileOnLo,
-    borderLeftColor: colors.tileOnLo,
-    borderBottomColor: colors.tileOnHi,
-    borderRightColor: colors.tileOnHi,
-  },
-  providerChipText: { fontSize: typography.sizeSm, fontWeight: "600", color: colors.tileOffGlyph },
-  providerChipTextSelected: { color: colors.tileOnGlyph },
   sectionLabel: {
     fontSize: typography.sizeXs,
     fontWeight: "600",
@@ -323,78 +165,6 @@ const styles = StyleSheet.create({
     fontSize: typography.sizeSm,
     color: colors.textMuted,
     lineHeight: 20,
-  },
-  savedKeyCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  savedKeyRow: {
-    flex: 1,
-  },
-  savedKeyLabel: {
-    fontSize: typography.sizeXs,
-    color: colors.textMuted,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  savedKeyMask: {
-    fontSize: typography.sizeMd,
-    color: colors.text,
-    fontFamily: "monospace",
-    marginTop: 4,
-  },
-  clearBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.error + "66",
-  },
-  clearBtnText: {
-    color: colors.error,
-    fontSize: typography.sizeSm,
-    fontWeight: "600",
-  },
-  noKeyText: {
-    fontSize: typography.sizeSm,
-    color: colors.textMuted,
-    fontStyle: "italic",
-  },
-  inputRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  keyInput: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    color: colors.text,
-    fontSize: typography.sizeMd,
-    fontFamily: "monospace",
-  },
-  saveBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    justifyContent: "center",
-  },
-  saveBtnDisabled: {
-    opacity: 0.45,
-  },
-  saveBtnText: {
-    color: colors.primaryText,
-    fontWeight: "700",
-    fontSize: typography.sizeSm,
   },
   divider: {
     height: 1,
