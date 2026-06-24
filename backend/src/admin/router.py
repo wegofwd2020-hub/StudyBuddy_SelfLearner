@@ -105,8 +105,7 @@ async def list_users(
     total = await repo.count_accounts(conn)
     counts = await repo.count_devices_by_account(conn, [a.id for a in accounts])
     users = [
-        AdminUserRow(**_summary(a).model_dump(), device_count=counts.get(a.id, 0))
-        for a in accounts
+        AdminUserRow(**_summary(a).model_dump(), device_count=counts.get(a.id, 0)) for a in accounts
     ]
     return AdminUserList(users=users, total=total, limit=limit, offset=offset)
 
