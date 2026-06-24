@@ -3,15 +3,21 @@
 // maintainable, searchable, and deep-linkable by topic id. Add a topic by
 // appending to HELP_TOPICS; the screen renders + indexes it automatically.
 
+import { PROVIDERS } from "@/constants/providers";
+import { COST_LABEL, PROVIDER_GUIDES } from "@/constants/providerGuides";
+import type { StepId } from "@/onboarding/firstRunState";
+
 // Internal routes a help link may point at (kept a union so it satisfies
 // expo-router's typed routes without a cast).
-export type HelpHref = "/settings" | "/diagram-types";
+export type HelpHref = "/settings" | "/diagram-types" | "/sign-in";
 
 export type HelpBlock =
   | { kind: "text"; text: string }
   | { kind: "steps"; steps: string[] }
   | { kind: "link"; label: string; href: HelpHref }
-  | { kind: "defs"; defs: { term: string; def: string }[] };
+  | { kind: "defs"; defs: { term: string; def: string }[] }
+  // Re-launch a first-run wizard step (the Help screen calls relaunchStep(step)).
+  | { kind: "action"; label: string; step: StepId };
 
 export interface HelpTopic {
   id: string; // stable id (future deep-link target)
@@ -33,9 +39,26 @@ export function blockText(blocks: HelpBlock[]): string {
           return b.label;
         case "defs":
           return b.defs.map((d) => `${d.term} ${d.def}`).join(" ");
+        case "action":
+          return b.label;
       }
     })
     .join(" ");
+}
+
+// One "where to get a key" line per provider, derived from the provider guides
+// so the help page can't drift from the in-wizard guidance.
+function providerKeyDefs(): { term: string; def: string }[] {
+  return PROVIDERS.flatMap((p) => {
+    const g = PROVIDER_GUIDES[p.id];
+    if (!g) return [];
+    return [
+      {
+        term: p.label,
+        def: `${COST_LABEL[g.cost]}. Get a key at ${g.consoleLabel} (key looks like ${p.keyHint}).`,
+      },
+    ];
+  });
 }
 
 // Case-insensitive search over title + keywords + visible text. Empty query
@@ -66,15 +89,102 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    id: "byok",
-    title: "Your Anthropic key (BYOK)",
-    keywords: ["key", "api", "byok", "anthropic", "billing", "pay", "secure", "privacy"],
+    id: "getting-started-account",
+    title: "Create your account & sign in",
+    keywords: [
+      "account", "sign in", "signin", "sign up", "signup", "login", "log in",
+      "register", "google", "email", "password", "confirm", "verify", "sync",
+    ],
     blocks: [
       {
         kind: "text",
-        text: "Mentible is bring-your-own-key: you pay Anthropic directly. Your key is kept in the device keystore and sent per request to generate content — it is never logged or stored on a server.",
+        text: "An account is optional but recommended: it syncs your library and provider settings across your devices. You can sign up with an email and password, or continue with Google. You can always read the included books and use a BYOK key without an account.",
       },
+      {
+        kind: "steps",
+        steps: [
+          "Open the sign-in screen (or the first-run wizard) and choose Create account.",
+          "Enter your email and a password (at least 6 characters), or tap Continue with Google.",
+          "If you signed up with email, check your inbox and tap the confirmation link, then sign in.",
+          "Once signed in, your library and provider settings sync automatically.",
+        ],
+      },
+      { kind: "action", label: "Start the sign-up walkthrough", step: "signup" },
+      {
+        kind: "defs",
+        defs: [
+          {
+            term: "Didn't get the confirmation email",
+            def: "Check your spam folder and that the address is correct. Re-running sign-up resends the link.",
+          },
+          {
+            term: "“Continue with Google” did nothing",
+            def: "The sign-in browser was likely dismissed. Tap Continue with Google again and complete the Google prompt.",
+          },
+          {
+            term: "Sign-in isn't available",
+            def: "Some builds (including the demo) run without accounts — you can still read the included books and use a BYOK key without signing in.",
+          },
+        ],
+      },
+      { kind: "link", label: "Open sign-in →", href: "/sign-in" },
+    ],
+  },
+  {
+    id: "provider-keys",
+    title: "Choose a provider & get an API key",
+    keywords: [
+      "key", "api", "byok", "provider", "anthropic", "claude", "openai", "groq",
+      "openrouter", "gemini", "google", "free", "paid", "billing", "cost",
+    ],
+    blocks: [
+      {
+        kind: "text",
+        text: "Mentible is bring-your-own-key (BYOK): you connect your own LLM account and are billed by that provider directly. Your key is stored in the device keystore and sent per request — never logged or stored on a server. You can add more than one provider and switch between them in Settings.",
+      },
+      {
+        kind: "text",
+        text: "Want to try it free? Groq, Google Gemini and OpenRouter all have free tiers (output is draft-grade). Anthropic (Claude) gives the best quality for finished books but is paid.",
+      },
+      { kind: "defs", defs: providerKeyDefs() },
+      {
+        kind: "steps",
+        steps: [
+          "In Settings (or the first-run wizard), pick a provider.",
+          "Open that provider's console using the link and create an API key.",
+          "Copy the key and paste it into the key field — it's checked for the right shape and saved on your device.",
+          "Your key is verified the first time you generate; if it's wrong you'll see a clear error.",
+        ],
+      },
+      { kind: "action", label: "Start the API-key walkthrough", step: "key" },
       { kind: "link", label: "Open Settings →", href: "/settings" },
+    ],
+  },
+  {
+    id: "reading-a-book",
+    title: "Open a book & get around",
+    keywords: [
+      "read", "reading", "open", "book", "library", "tabs", "navigate", "menu",
+      "topic", "lesson", "export", "epub", "pdf", "tour", "studio", "shelf",
+    ],
+    blocks: [
+      {
+        kind: "text",
+        text: "Mentible has five places along the top of the app: Library (your finished books), Studio (create and edit books), Settings (your LLM keys and preferences), Help (guides and these walkthroughs), and About (version and privacy).",
+      },
+      {
+        kind: "steps",
+        steps: [
+          "Open Library and tap a book cover to open it.",
+          "Inside the book, tap a topic to read its lesson.",
+          "Use Export to save the book as an EPUB or PDF for offline reading.",
+        ],
+      },
+      {
+        kind: "text",
+        text: "New here? Your Library already has a book ready to open, so you can start reading before authoring anything of your own.",
+      },
+      { kind: "action", label: "Replay the app tour", step: "tour" },
     ],
   },
   {
