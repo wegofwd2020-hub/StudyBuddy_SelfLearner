@@ -48,6 +48,7 @@ async def get_my_account(
         sub=account.idp_sub,
         email=account.email,
         credentials=[_view(c) for c in creds],
+        is_super_admin=principal.is_super_admin,
     )
 
 

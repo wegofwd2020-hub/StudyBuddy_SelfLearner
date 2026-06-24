@@ -78,6 +78,18 @@ export default function AccountScreen() {
           <Text style={styles.linkText}>Send password-reset email</Text>
         </Pressable>
 
+        {account?.is_super_admin ? (
+          <Pressable
+            style={styles.adminRow}
+            onPress={() => router.push("/admin")}
+            accessibilityRole="button"
+            accessibilityLabel="Open the admin console"
+          >
+            <Text style={styles.adminText}>🛡 Admin · manage users</Text>
+            <Text style={styles.adminChevron}>›</Text>
+          </Pressable>
+        ) : null}
+
         <Text style={styles.section}>Providers</Text>
         <Text style={styles.hint}>
           Which providers you have a key for. Keys themselves stay on your device (BYOK).
@@ -133,6 +145,18 @@ const styles = StyleSheet.create({
   email: { color: colors.text, fontSize: typography.sizeXl, fontWeight: "700", marginBottom: spacing.md },
   linkRow: { paddingVertical: spacing.sm },
   linkText: { color: colors.primary, fontSize: typography.sizeMd },
+  adminRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+  },
+  adminText: { flex: 1, color: colors.text, fontSize: typography.sizeMd, fontWeight: "600" },
+  adminChevron: { color: colors.textMuted, fontSize: typography.sizeXl },
   section: { color: colors.text, fontSize: typography.sizeLg, fontWeight: "700", marginTop: spacing.lg },
   hint: { color: colors.textSecondary, fontSize: typography.sizeSm, marginBottom: spacing.sm },
   providerRow: {

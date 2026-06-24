@@ -20,6 +20,7 @@ export interface AccountView {
   sub: string;
   email: string | null;
   credentials: ProviderCredential[];
+  is_super_admin: boolean;
 }
 
 async function authFetch<T>(path: string, token: string, options?: RequestInit): Promise<T | null> {
