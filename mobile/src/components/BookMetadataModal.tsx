@@ -1,7 +1,6 @@
 import React from "react";
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -118,78 +117,89 @@ export function BookMetadataModal({
   onRead,
   onClose,
 }: BookMetadataModalProps) {
+  if (!visible) return null;
   const rows = deriveRows(book, meta ?? { title: "" });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close book details">
-        {/* Stop taps inside the card from dismissing the modal. */}
-        <Pressable style={styles.card} onPress={() => {}}>
-          <Text style={styles.title} numberOfLines={3}>
-            {rows.name}
-          </Text>
-          {loading ? (
-            <View style={styles.loading}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : (
-            <ScrollView style={styles.rows} contentContainerStyle={styles.rowsContent}>
-              <Row label="Date Released" value={rows.released} />
-              <Row label="Model Used" value={rows.model} />
-              <Row label="Level" value={rows.level} />
-              <Row label="Depth" value={rows.depth} />
-              <Row label="Type of Diagrams" value={rows.diagrams} />
-              <Row label="Pages (target)" value={rows.pages} />
-              <Row label="Reviewed By" value={rows.reviewedBy} />
-              <Row label="Reviewed On" value={rows.reviewedOn} />
-            </ScrollView>
-          )}
-          <View style={styles.footer}>
-            <Pressable
-              style={styles.closeBtn}
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-            >
-              <Text style={styles.closeBtnText}>Close</Text>
-            </Pressable>
-            <Pressable
-              style={styles.readBtn}
-              onPress={onRead}
-              accessibilityRole="button"
-              accessibilityLabel="Read this book"
-            >
-              <Text style={styles.readBtnText}>Read</Text>
-            </Pressable>
+    // Non-blocking overlay: the container passes touches through (`box-none`) so
+    // the book shelf behind stays tappable — tapping another book just re-points
+    // the sidebar instead of closing it. The scrim is visual-only (`none`); only
+    // the docked panel captures taps. Dismiss via the Close button.
+    <View style={styles.overlay} pointerEvents="box-none">
+      <View style={styles.scrim} pointerEvents="none" />
+      <View style={styles.sidebar}>
+        <Text style={styles.title} numberOfLines={3}>
+          {rows.name}
+        </Text>
+        {loading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.primary} />
           </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+        ) : (
+          <ScrollView style={styles.rows} contentContainerStyle={styles.rowsContent}>
+            <Row label="Date Released" value={rows.released} />
+            <Row label="Model Used" value={rows.model} />
+            <Row label="Level" value={rows.level} />
+            <Row label="Depth" value={rows.depth} />
+            <Row label="Type of Diagrams" value={rows.diagrams} />
+            <Row label="Pages (target)" value={rows.pages} />
+            <Row label="Reviewed By" value={rows.reviewedBy} />
+            <Row label="Reviewed On" value={rows.reviewedOn} />
+          </ScrollView>
+        )}
+        <View style={styles.footer}>
+          <Pressable
+            style={styles.closeBtn}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <Text style={styles.closeBtnText}>Close</Text>
+          </Pressable>
+          <Pressable
+            style={styles.readBtn}
+            onPress={onRead}
+            accessibilityRole="button"
+            accessibilityLabel="Read this book"
+          >
+            <Text style={styles.readBtnText}>Read</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "#00000099",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing.lg,
-  },
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    maxHeight: "80%",
+  // Full-screen, touch-transparent layer that the panel + scrim live in.
+  overlay: { ...StyleSheet.absoluteFillObject },
+  // Faint scrim over the shelf — visual separation only (never blocks taps).
+  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.18)" },
+  // Panel docked to the right edge, starting below the floating profile chip
+  // (UserChip: top 8 + 56px avatar + name ≈ 80) so it doesn't cover it.
+  sidebar: {
+    position: "absolute",
+    top: 88,
+    right: 0,
+    bottom: 0,
+    width: 340,
+    maxWidth: "92%",
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
+    borderTopLeftRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.md,
+    // Float above the shelf.
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    shadowOffset: { width: -8, height: 0 },
+    elevation: 12,
   },
   title: { fontSize: typography.sizeLg, fontWeight: "700", color: colors.text },
   loading: { paddingVertical: spacing.xl, alignItems: "center" },
-  rows: { flexGrow: 0 },
+  rows: { flex: 1 },
   rowsContent: { gap: spacing.sm },
   row: {
     flexDirection: "row",
