@@ -1,10 +1,15 @@
-# StudyBuddy Q
+# Mentible (repo `StudyBuddy_SelfLearner`)
 
-> **A purpose-built Anthropic client for self-learners.**
-> *Q = Query — references the scoped-query model that is the engineering IP.*
+> **A purpose-built LLM client for self-learners** — turn a scoped query into a real,
+> polished **book** (EPUB3/PDF). *("StudyBuddy Q / Q = Query" is the historical name;
+> the public brand is **Mentible** — ADR-006, pending trademark clearance.)*
 
-Repo: `StudyBuddy_SelfLearner` (internal name).
-Brand: **StudyBuddy Q** (public-facing).
+Repo: `StudyBuddy_SelfLearner` (internal name). Brand: **Mentible** (public-facing).
+
+> **Status (2026-06-27): in production.** Backend live at `mambakkam.net/mentible-api`;
+> full web app at `mambakkam.net/app/mentible`; read-only demo at `/demos/mentible`;
+> Android APK released. Accounts (Supabase) + super-admin verified live.
+> **Current "what's built" record → [`docs/STATUS.md`](docs/STATUS.md).**
 
 ---
 
@@ -22,7 +27,12 @@ Think *"Claude Code, but for learners instead of coders."*
 
 ## Status
 
-🚧 **Pre-MVP** — directory stubs only, no application code yet.
+✅ **In production (2026-06-27).** Backend (FastAPI: generate / export / accounts /
+super-admin) live at `mambakkam.net/mentible-api`; Expo app (Books-only authoring,
+reader, BYOK, Supabase accounts) shipped as a **hosted web app** (`/app/mentible`), a
+read-only **demo** (`/demos/mentible`), and an **Android APK**; Node EPUB3/PDF compiler;
+Content Trust Manifest. Google sign-in + super-admin verified live. **Full current
+record → [`docs/STATUS.md`](docs/STATUS.md).**
 
 | Doc | Purpose |
 |---|---|

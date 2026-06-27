@@ -1,8 +1,18 @@
 # StudyBuddy Q — CLAUDE.md
 
-> **Brand:** StudyBuddy Q  *(Q = Query — references the scoped-query model that is the engineering IP)*
+> **Brand:** **Mentible** (public rebrand of "StudyBuddy Q" — ADR-006, Accepted; name
+> pending trademark clearance). "StudyBuddy Q" / "Q = Query" framing below is historical.
 > **Repo:** `StudyBuddy_SelfLearner` *(repo name is internal; brand is public)*
-> **Status:** Pre-MVP — directory stubs only, no application code yet.
+> **Status (updated 2026-06-27):** **In production.** This file's "Pre-MVP / directory
+> stubs only" line is long obsolete. Built + deployed: FastAPI backend (generate /
+> export / accounts / **super-admin admin API** — live at `mambakkam.net/mentible-api`),
+> Expo app (Books-only authoring, reader, BYOK, **accounts via Supabase**), the Node
+> **EPUB3/PDF compiler**, the **Content Trust Manifest** (SBQ-TRUST-001/002). Shipped
+> surfaces: **full web app** at `mambakkam.net/app/mentible`, read-only **demo** at
+> `/demos/mentible`, and an Android **APK** release. Google sign-in + the super-admin
+> console are **verified live on production**. **The canonical, current "what's built"
+> record is [`docs/STATUS.md`](docs/STATUS.md)** — read it first; the ADRs and STATUS.md
+> take precedence over the older framing in this file.
 
 A purpose-built Anthropic client for **self-learners**. Adults paste their own
 Anthropic API key (BYOK), describe what they want to learn, and get a beautifully

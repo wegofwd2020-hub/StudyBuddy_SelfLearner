@@ -5,11 +5,14 @@ demo** (no login, no DB) into the **identity-enabled** deployment that the accou
 (ADR-014) and the super-admin console (ADR-020) need. Until this is done,
 `SUPER_ADMIN_EMAILS` is inert (see `USER_MANAGEMENT.md` §3.1).
 
-**Status (2026-06-20):** not done. The deployed image is the 2026-06-11 demo build
-(admin/account routes return 404 because that image predates them); `.env.demo` sets
-only `BYOK_MASTER_KEY` (+ `SYSTEM_OWNER_SECRET`). `docker-compose.demo.yml` now *passes
-through* the identity env (this PR) but it is empty by default, so behaviour is
-unchanged until the env is set.
+**Status (updated 2026-06-27): ✅ DONE.** This go-live was completed on **2026-06-23**:
+the identity-enabled image was deployed, `.env.demo` got `OIDC_ISSUER` / `DATABASE_URL`
+(Supabase session pooler) / `SUPER_ADMIN_EMAILS`, migrations ran, and **account + admin
+routes are live** at `https://mambakkam.net/mentible-api`. Google sign-in + the
+super-admin console are **verified on production** (2026-06-27). A DB-password mismatch
+in `.env.demo` (post-rotation) briefly broke authed DB endpoints and was fixed.
+_Next:_ refresh the running image to current `main` — `Plans/PROD_BACKEND_REFRESH_TO_MAIN.md`.
+The original "not done" runbook is kept below for reference.
 
 ## What's already known / done
 - **Supabase project exists:** `vvlsaiywyfhxkjppjoiy` → `OIDC_ISSUER =

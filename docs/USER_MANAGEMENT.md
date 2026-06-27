@@ -1,6 +1,9 @@
 # User Management — design, implementation & troubleshooting
 
-> **Status:** Built and **verified working end-to-end on-device** (2026-06-16).
+> **Status:** Built and **verified working end-to-end on-device** (2026-06-16); now
+> also **deployed + verified on production** — **Google sign-in live** on the hosted web
+> app (`mambakkam.net/app/mentible`) and the **super-admin console** (ADR-020) verified
+> (suspend→audit→reactivate→delete + 403) on prod (2026-06-27).
 > **Companion to:** **ADR-014** (the account/identity *decisions*) and **ADR-019**
 > (this is the "build identity *here* first, extract on the second consumer" case —
 > see §5 *Porting*). This doc is the *how*: the architecture, the file map, the

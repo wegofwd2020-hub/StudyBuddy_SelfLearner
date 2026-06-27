@@ -1,6 +1,10 @@
 # ADR-014 — User accounts & the per-provider credential set (BYOK-first identity)
 
-**Status:** Proposed — 2026-06-11 · _O1/O5 resolved 2026-06-16; O2/O3/O4 resolved 2026-06-17; ticket #1 (JWKS verify) implemented_
+**Status:** Accepted — **built & deployed** (updated 2026-06-27). IdP = Supabase
+(O1/O5); JWKS verify + account / per-provider credential-set API + mobile Account page
+shipped; device tracking added. **Google sign-in verified live on production**
+(`mambakkam.net/app/mentible`, 2026-06-27). _Original: Proposed 2026-06-11._
+Still deferred: zero-knowledge library **sync** (O2) and usage Phase 2 (device-local only for now).
 **Decision-maker:** Sivakumar Mambakkam
 
 > **Decisions made (2026-06-16).** **O1 → Supabase** (bundles auth + the synced-library
