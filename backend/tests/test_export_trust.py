@@ -90,9 +90,7 @@ def test_compliance_all_pass(monkeypatch):
 def test_compliance_drift_is_advisory_not_fail(monkeypatch):
     # AC4: a content-format-drift warning caps the result at pass_with_notes,
     # never a hard fail — even though every other check passed.
-    monkeypatch.setattr(
-        export_trust, "book_warnings", lambda book: [{"rule": "expected_table"}]
-    )
+    monkeypatch.setattr(export_trust, "book_warnings", lambda book: [{"rule": "expected_table"}])
     book = _book_with(visuals=25, glossary=True)
     c = export_trust.compute_compliance(book, _GOOD_PDF_META)
     assert c.status == "pass_with_notes"
