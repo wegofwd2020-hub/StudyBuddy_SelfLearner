@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/auth/AuthProvider";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
-const AVATAR = 40;
+const AVATAR = 56;
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -36,7 +36,7 @@ export function UserChip() {
         accessibilityLabel="Sign in"
       >
         <View style={styles.placeholder}>
-          <Ionicons name="person-circle-outline" size={36} color={colors.textSecondary} />
+          <Ionicons name="person-circle-outline" size={52} color={colors.textSecondary} />
         </View>
         <Text style={styles.name} numberOfLines={1}>
           Sign in
