@@ -1,6 +1,11 @@
 # ADR-020 — Super-admin operator role (runtime admin console)
 
-**Status:** Proposed — 2026-06-19
+**Status:** Accepted — **built & verified live** (updated 2026-06-27). Tickets #1
+(role gate + portable `VerifiedToken` seam), #2 (`/api/v1/admin/users` list / get /
+suspend / reactivate / delete), #5 (persistent `admin_audit`) shipped; mobile admin
+console shipped. Suspend→audit→reactivate→delete + 403-for-non-admin **verified live on
+production** (2026-06-27). _Original: Proposed 2026-06-19._ Deferred tickets: #3
+(library publish), #4 (metrics), #6 (managed-keys, blocked on ADR-005 vault).
 **Decision-maker:** Sivakumar Mambakkam
 **Resolves:** [#174](https://github.com/wegofwd2020-hub/StudyBuddy_SelfLearner/issues/174)
 **Builds on / Extends:** **ADR-018** (system-owner principal). ADR-018 introduced

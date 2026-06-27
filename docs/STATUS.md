@@ -1,6 +1,7 @@
 # Project Status — Mentible (repo `StudyBuddy_SelfLearner`)
 
-> **Last updated:** 2026-06-14
+> **Last updated:** 2026-06-27 — see **“Shipped since the last refresh”** below for the
+> accounts / go-live / trust / web-app arc. (Detail in the older sections predates it.)
 > **Brand:** **Mentible** (rebrand of "StudyBuddy Q" — ADR-006, Accepted; name
 > pending trademark clearance). The repo/dir name `StudyBuddy_SelfLearner` is
 > unchanged and internal.
@@ -31,9 +32,63 @@ Mentible is a **paid authoring app** (this repo) that turns a scoped query into 
 - **Pramana B2B compliance** integration is a **defined contract** (ADR-011/013),
   **not yet built** (no package builder/signing).
 
-**Centre of gravity now:** authoring + artifact quality + multi-provider, not the
-original single-app B2C MVP loop. On-device verification of the mobile loop is
-still the main thing that hasn't been *proven* end-to-end.
+**Centre of gravity now (2026-06-27):** the product **went live**. The backend is
+deployed and identity-enabled; the full web app, demo, and APK are shipped; Google
+sign-in and the super-admin console are **verified on production**. Focus shifted from
+"build the loop" to "operate + polish what's live."
+
+---
+
+## ⭐ Shipped since the last refresh (2026-06-14 → 06-27)
+
+The arc: **accounts → go-live → trust → hosted web app + deploy pipeline.**
+
+### Accounts & identity (ADR-014 — now Accepted, built & deployed)
+- **Supabase IdP** (O1), verified **statelessly via JWKS** — no local password/refresh
+  machinery. Account + **per-provider credential-set** DB (asyncpg), backend-mediated
+  app-isolation. Mobile **Account page** (email/password + **Google sign-in**, PKCE),
+  profile chip, read-only-until-login gate, account-picker on re-login, per-install
+  **device tracking**.
+- **Google sign-in verified live on production** (`/app/mentible`): Google → token →
+  backend `/account` → account + device provisioned.
+
+### Super-admin operator (ADR-020 — now Accepted, built & verified live)
+- `/api/v1/admin/users` (list / get / **suspend / reactivate / delete**) gated by a
+  config allowlist (`SUPER_ADMIN_EMAILS`; a *derived* flag, never a token claim) + a
+  durable **`admin_audit`** trail; **mobile admin console**. Full
+  suspend→audit→reactivate→delete + 403-for-non-admin **verified on prod**.
+
+### Content Trust Manifest (ADR-015/016 — now built)
+- **SBQ-TRUST-001** (stamp the manifest on each generation) + **SBQ-TRUST-002**
+  (export-time compliance + integrity) merged; **`wegofwd-llm` → v0.2.0** (adds the
+  `trust` submodule the new code imports). TrustBadge consumes it.
+
+### Deployment — now LIVE (was "config only / unverifiable")
+- **Prod backend** live + identity-enabled at `mambakkam.net/mentible-api` (Hetzner VPS,
+  `docker-compose.demo.yml`, behind host nginx). _The running image is the 2026-06-23
+  build; refresh to current `main` is staged — `Plans/PROD_BACKEND_REFRESH_TO_MAIN.md`._
+- **Full web app** at **`mambakkam.net/app/mentible`** (Expo web export — full
+  generate/author/accounts) + read-only **demo** at **`/demos/mentible`** (no auth).
+- **Android APK** released (GitHub Release on the public `mambakkam-net` repo; landing
+  page `mambakkam.net/mentible` links the latest).
+- **Deploy pipeline** codified: `docs/DEPLOYMENT_PIPELINE.md` + `scripts/deploy/web-deploy.sh`
+  (`{demo|app}` — builds from `origin/main`, force-adds fonts, `--clear`, Supabase only on
+  the app, deploys + verifies). **local → demo → production** discipline.
+
+### Mobile features & UX
+- **Book metadata window** (#193): tap a book → a non-blocking **right sidebar** with
+  Name / Date Released / Model / Level / Depth / Diagram type / Pages / **Reviewed By/On**
+  (+ review data seeded on the bundled books).
+- **HelpHint** — `?` contextual one-liners (SBQ-UI-003), wired to the Account
+  destructive actions.
+- Account/auth UX: post-sign-in lands on **Library**; **never-dead-end** back button;
+  "Clear device keys" → **"Remove saved API keys"**.
+- **Fonts bundled** (Inter + Source Serif 4 + OpenDyslexic via expo-font; dyslexia toggle).
+- **Mobile CI** now runs ("Mobile — Typecheck, Lint & Tests").
+
+### Platform packages (ADR-019)
+- **`wegofwd-secure`** (key-redaction + BYOK envelope) extracted to a public package;
+  backend consumes it via thin shims.
 
 ---
 
@@ -64,7 +119,7 @@ still the main thing that hasn't been *proven* end-to-end.
 
 ### Multi-provider LLM (ADR-005 hybrid · ADR-012 package · ADR-013)
 - Generation routed through the installable **`wegofwd-llm`** seam (pinned
-  `v0.1.2` in `backend/requirements.txt`) — graduated from the vendored
+  `v0.2.0` in `backend/requirements.txt` — bumped for the `trust` submodule) — graduated from the vendored
   `pipeline/providers/` (ADR-012). Shared across Mentible / Pramana / OnDemand.
 - Providers: **Anthropic** (native tool-use JSON) + OpenAI-compatible **OpenAI,
   Groq, OpenRouter, Gemini** (free tiers wired). Per-provider key-prefix validation.
@@ -104,7 +159,7 @@ still the main thing that hasn't been *proven* end-to-end.
   desktop split-pane).
 - **Brand themes** (`theme.ts` — Study dark default; Manuscript/Reading palettes
   staged) + **authoring label vocabulary** (`labels.ts`).
-- Tests: **23 files**. **Not in CI** (no mobile job yet); type-checked locally.
+- Tests: **52 suites / ~299 cases**, **now in CI** ("Mobile — Typecheck, Lint & Tests").
 
 ### Quality & Compliance Gates — Gate 3 (format-drift) wired (PRs #98–#100)
 - Shared `backend/src/core/format_scan.py` (`lesson_warnings` / `book_warnings` /
@@ -128,8 +183,10 @@ still the main thing that hasn't been *proven* end-to-end.
 - **Shared VPS demo** (PR #88): `docker-compose.demo.yml` for a **Mentible demo
   backend** behind host nginx at `/mentible-api/` (Redis localhost-only, resource
   limits). Multi-stage `Dockerfile` bundles Node + Chromium + the built compiler.
-- *Caveat:* the repo confirms the **config + runbook**; a live public URL / running
-  instance isn't verifiable from the repo alone.
+- **NOW LIVE (2026-06-27):** the backend runs at `mambakkam.net/mentible-api`
+  (identity-enabled), the **full web app** at `/app/mentible` + **demo** at
+  `/demos/mentible` are hosted, and an **APK** is released. Pipeline:
+  `scripts/deploy/web-deploy.sh`. (The Fly path above is superseded by the VPS deploy.)
 
 ### Decision ledger (ADRs on `main`)
 | ADR | Title | Status |
@@ -147,25 +204,31 @@ still the main thing that hasn't been *proven* end-to-end.
 | 011 | Mentible⇄Pramana consumable handoff | Proposed (amended by 013) |
 | 012 | Shared `wegofwd-llm` LLM seam | Accepted |
 | 013 | Pramana in-process generation | Accepted |
-| 014 | User accounts + per-provider credential set | Proposed |
-| 015 | Content Trust Manifest | Proposed |
-| 016 | One provider per content + visible provenance | Proposed |
+| 014 | User accounts + per-provider credential set | **Accepted — built & deployed** (Supabase/JWKS, account API, mobile Account page, Google sign-in live) |
+| 015 | Content Trust Manifest | **Accepted — built** (SBQ-TRUST-001/002; wegofwd-llm v0.2.0) |
+| 016 | One provider per content + visible provenance | **Accepted — built** (per-book pin + TrustBadge provenance) |
+| 017 | Default shareable library | Accepted — bundled default library ships + seeds on first run |
+| 018 | System-owner principal | Accepted — owner secret + `owner_cli {publish,unpublish,verify}` |
+| 019 | Common platform libraries | Accepted — `wegofwd-llm` + `wegofwd-secure` extracted |
+| 020 | Super-admin operator role | **Accepted — built & verified live** (admin API + audit + mobile console) |
+| 021 | Everyone Library (UGC) + moderation | Proposed — design-only (build deferred) |
 
 ---
 
 ## Not yet done
 
-### In flight (partly on `main`)
-- **Content Trust Manifest** (ADR-015) — the manifest shape + the per-unit
-  **TrustBadge** (mobile, incl. ADR-016 D6/D7 visible provenance) are **merged**
-  (PR #106). Still to land: the **backend packager** that stamps `engine_trust`
-  onto each generation (blocked on `wegofwd-llm` ≥ v0.2.0), feeding the D7
-  **staleness** hint (needs the registry's current-default model exposed
-  client-side), and export-time `compliance`/`integrity` (**SBQ-TRUST-002**).
+### ~~Content Trust Manifest~~ → DONE (see "Shipped since")
+- The manifest shape + mobile **TrustBadge** (ADR-015/016) plus the backend packager
+  (**SBQ-TRUST-001**, generation-time `engine_trust`) and export-time
+  `compliance`/`integrity` (**SBQ-TRUST-002**) are all **merged**; `wegofwd-llm` is at
+  **v0.2.0**. _Remaining nicety:_ surfacing the registry's current-default model
+  client-side for the staleness hint.
 
 ### Managed identity & billing (ADR-005 pulled these to MVP)
-- Accounts/auth (email + Google/Apple), per-user usage metering, plan caps, the
-  **managed-key** vault path. Today only the **BYOK** path is built.
+- **Accounts/auth are DONE** (email + **Google**; ADR-014 — built & deployed, sign-in
+  live). **Still not built:** per-user **usage metering Phase 2**, **plan caps**, and
+  the **managed-key vault** path (ADR-005 D6 / ADR-020 #6). The **BYOK** path is the
+  one in production today.
 
 ### Pramana B2B compliance (contract only)
 - The Consumable Package **builder, manifest, `content_hash`, signing, and push**
@@ -195,29 +258,33 @@ track the core mobile loop:
 
 | # | Criterion | Status |
 |---|---|---|
-| 1 | User enters key once, never re-enters | ✅ implemented (now **per provider**) · ⬜ unverified on device |
-| 2 | Topic + Level → rendered content on real device | ✅ code complete · ⬜ awaits on-device run |
-| 3 | Maths (KaTeX) renders | ✅ app + compiler (MathML) · ⬜ unverified on device |
-| 4 | Diagram (Mermaid) renders | ✅ app + compiler (SVG) · ⬜ unverified on device |
+| 1 | User enters key once, never re-enters | ✅ implemented (now **per provider**) · ✅ verified (APK + live web) |
+| 2 | Topic + Level → rendered content on real device | ✅ ✅ verified on emulator + live web app |
+| 3 | Maths (KaTeX) renders | ✅ app + compiler (MathML) · ✅ verified in the shipped app |
+| 4 | Diagram (Mermaid) renders | ✅ app + compiler (SVG) · ✅ verified in the shipped app |
 | 5 | Backend never logs the key | ✅ enforced + tested in CI (mandatory gate) |
-| 6 | Generation < 90 s p95 | ⬜ unmeasured (needs live runs) |
+| 6 | Generation < 90 s p95 | ⬜ **not formally measured** (some runs are slow; poll TTL 600 s) |
 
-**Bottom line:** code is in place for all six; deployment config now exists, but a
-real-device end-to-end run (criteria 2/3/4/6) hasn't been done. Criterion 5 is
-proven in CI.
+**Bottom line (2026-06-27):** the loop is now **exercised end-to-end** — the full APK
+was built + smoke-tested on an emulator, the web app is **live** with generation +
+**sign-in verified on production**, and KaTeX/Mermaid render in the shipped app.
+Criterion 5 is proven in CI. The one still-open metric is **6 (latency)** — not
+formally measured (the poll timeout was raised to 600 s for slow generations).
 
 ---
 
 ## Next up
 
-1. **Stand up a verifiable backend URL** (Fly via `docs/DEPLOY_FLY.md`, or confirm
-   the VPS demo) and build the Android APK (`eas build … --profile preview` with
-   `EXPO_PUBLIC_API_BASE_URL`).
-2. **Run the six criteria on a real device** against live Anthropic + a real key.
-3. **Decide the managed-account path** (ADR-014) — accounts/metering gate the
-   managed-key business model from ADR-005.
-4. **Pramana slice** (when prioritised): the package builder + signing to make
-   ADR-011 real (one framework, full receive→approve→publish path).
-5. Resolve the open ADRs: **010** (narrative mode), **trademark** clearance for
-   **006**, and accept/iterate **015/016** (trust manifest — mobile surface shipped
-   in PR #106; backend packager + export attach remain — **SBQ-TRUST-001/002**).
+_(Items 1–2 from the prior refresh — backend URL, APK, on-device run — are **done**.)_
+
+1. **Refresh the prod backend to current `main`** — root run-block staged on the VPS
+   (`Plans/PROD_BACKEND_REFRESH_TO_MAIN.md`); the running image is the 2026-06-23 build.
+2. **Managed billing (ADR-005)** — usage metering Phase 2, plan caps, and the
+   **managed-key vault** (the half of ADR-005/ADR-020 #6 not yet built).
+3. **Library sync (ADR-014 O2)** — zero-knowledge cloud sync (device-local only today).
+4. **Everyone Library (ADR-021)** — design-only; decide the build trigger (hosting,
+   moderation, ToS/DMCA, the AI-assisted complaint workflow).
+5. **Latency** — measure generation against the < 90 s p95 target (criterion 6).
+6. **HelpHint rollout (SBQ-UI-003)** — extend the `?` hints beyond the Account screen.
+7. **Trademark clearance** on Mentible vs "Mentable" before assets/listings lock.
+8. **Pramana slice** (when prioritised): the package builder + signing for ADR-011.
