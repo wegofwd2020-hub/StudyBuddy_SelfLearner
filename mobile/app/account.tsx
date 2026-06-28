@@ -146,7 +146,13 @@ export default function AccountScreen() {
           </Pressable>
         ) : null}
 
-        <Text style={styles.section}>Providers</Text>
+        <View style={styles.sectionRow}>
+          <Text style={[styles.section, styles.sectionInRow]}>Providers</Text>
+          <HelpHint
+            label="Providers"
+            text="Marks which providers you hold a key for. Only this on/off marker is saved to your account — the key value itself never leaves this device. 'On this device' marks it here; 'Remove' clears that."
+          />
+        </View>
         <Text style={styles.hint}>
           Which providers you have a key for. Keys themselves stay on your device (BYOK).
         </Text>
@@ -255,6 +261,15 @@ const styles = StyleSheet.create({
   adminText: { flex: 1, color: colors.text, fontSize: typography.sizeMd, fontWeight: "600" },
   adminChevron: { color: colors.textMuted, fontSize: typography.sizeXl },
   section: { color: colors.text, fontSize: typography.sizeLg, fontWeight: "700", marginTop: spacing.lg },
+  // Section heading + its `?` HelpHint on one row (marginTop moves to the row).
+  sectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  sectionInRow: { marginTop: 0 },
   hint: { color: colors.textSecondary, fontSize: typography.sizeSm, marginBottom: spacing.sm },
   providerRow: {
     flexDirection: "row",

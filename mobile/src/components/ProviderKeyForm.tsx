@@ -7,6 +7,7 @@ import {
   maskApiKey,
   saveApiKey,
 } from "@/secure/keyStore";
+import { HelpHint } from "@/components/HelpHint";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { DEFAULT_PROVIDER_ID, PROVIDERS, providerInfo } from "@/constants/providers";
 
@@ -135,6 +136,13 @@ export function ProviderKeyForm({
         <Text style={styles.noKeyText}>No key saved</Text>
       )}
 
+      <View style={styles.keyLabelRow}>
+        <Text style={styles.keyLabel}>API key</Text>
+        <HelpHint
+          label="API key"
+          text="Stored only in this device's secure storage. It travels with each generation request and is used once to call the provider, then discarded — never logged or saved on our servers."
+        />
+      </View>
       <View style={styles.inputRow}>
         <TextInput
           style={styles.keyInput}
@@ -221,6 +229,14 @@ const styles = StyleSheet.create({
   },
   clearBtnText: { color: colors.error, fontSize: typography.sizeSm, fontWeight: "600" },
   noKeyText: { fontSize: typography.sizeSm, color: colors.textMuted, fontStyle: "italic" },
+  keyLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  keyLabel: { fontSize: typography.sizeSm, fontWeight: "600", color: colors.textSecondary },
   inputRow: { flexDirection: "row", gap: spacing.sm },
   keyInput: {
     flex: 1,
