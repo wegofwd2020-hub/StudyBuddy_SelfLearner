@@ -98,7 +98,7 @@ export default function AccountScreen() {
   };
 
   return (
-    <PageContainer>
+    <>
       <Stack.Screen
         options={{
           // Robust back: return to the previous screen, or to the Library when
@@ -117,7 +117,12 @@ export default function AccountScreen() {
           ),
         }}
       />
-      <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl }}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PageContainer>
         <Text style={styles.label}>Signed in as</Text>
         <Text style={styles.email}>{email || "—"}</Text>
 
@@ -212,13 +217,19 @@ export default function AccountScreen() {
             text="Permanently deletes your account and signs you out. This can't be undone."
           />
         </View>
+        </PageContainer>
       </ScrollView>
-    </PageContainer>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   headerBack: { paddingHorizontal: spacing.sm },
+  // ScrollView must own a bounded height (flex:1) to actually scroll; otherwise it
+  // grows to its content and the page overflows the viewport with no scrollbar
+  // (PageContainer goes *inside* the ScrollView — see its doc + settings.tsx).
+  scroll: { flex: 1, backgroundColor: colors.background },
+  scrollContent: { flexGrow: 1, paddingBottom: spacing.xl },
   // A destructive action + its HelpHint on one row (the button's own marginTop
   // moves to the row via actionBtn).
   actionRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.lg },
