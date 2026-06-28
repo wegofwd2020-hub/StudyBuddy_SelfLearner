@@ -1,8 +1,15 @@
 # SBQ-UI-003 — Contextual help hints (tappable `?` one-liners)
 
-**Status:** In progress — `HelpHint` component built + wired to the Account
-destructive buttons (reference implementation). Remaining: roll out to other
-screens (Settings, generation params, BYOK entry, trust badge, Library).
+**Status:** Substantially done — `HelpHint` built + wired to the Account destructive
+buttons (reference), then rolled out (2026-06-28) to: **generation params**
+(GenerationParamsEditor — Model/Level/Depth/Diagrams/Pages), **BYOK key entry**
+(ProviderKeyForm — where the key is stored), and the **Account → Providers custody**
+toggle (device-local vs synced). **Deliberately skipped** as already self-documenting:
+the **Trust badge** (tap-to-expand detail already), **Settings** (uses `HelpButton`
+deep-links to full help topics). Finding: most candidate controls gained
+always-visible inline subtext since this ticket was written, so HelpHints were added
+as *additive* deeper tips, not to fill bare gaps — except the Providers custody, which
+was a genuine gap. Library actions remain as an optional later adoption.
 **Type:** UX / reusable component (app-wide rollout)
 
 ## Problem
