@@ -267,12 +267,20 @@ the Open Decisions section are deliberately left to the decision-maker.
 
 ## Follow-up tickets (split from #90 once a model is chosen)
 
-1. IdP integration + backend JWKS verify (D1)
-2. First DB + migration `0001` (O5) — account + credential-set tables
-3. Credential-set storage + multi-provider Settings UI (D2–D4)
-4. Library sync API + zero-knowledge envelope encryption (D10) + recovery-key UX (O2/O4)
-   — **deferred past v1.1 (O3)**; device-local-only until then
-5. Provenance-driven degradation UX (D6) — only meaningful once sync (ticket #4) lands
-6. Rate limiting (D9)
-7. Book sharing (D11) — artifact-export path rides ADR-004 (no new ticket); the
-   public-key per-book-DK tier is a *later* ticket, only if live shared libraries land
+1. **✅ DONE.** IdP integration + backend JWKS verify (D1). `backend/src/auth/`;
+   Google sign-in live on prod 2026-06-27.
+2. **✅ DONE.** First DB + migration `0001` (O5) — account + credential-set tables.
+   `backend/alembic/versions/0001_account_and_credential_set.py`.
+3. **✅ DONE.** Credential-set storage + multi-provider Settings UI (D2–D4).
+   `backend/src/accounts/`, `mobile/app/account.tsx`.
+4. **⏳ Deferred past v1.1 (O3).** Library sync API + zero-knowledge envelope encryption
+   (D10) + recovery-key UX (O2/O4) — device-local-only until then.
+   **Scoped:** see [`docs/SYNC_BUILD_PLAN.md`](../SYNC_BUILD_PLAN.md).
+5. **⏳ Deferred (depends on #4).** Provenance-driven degradation UX (D6) — only
+   meaningful once sync lands. Folded into the plan above (Phase 5).
+6. **⏳ Not built (no version gate).** Rate limiting (D9) — designed as per-account
+   (IP fallback for the anonymous demo) but not yet gated in code. Tracked:
+   [#221](https://github.com/wegofwd2020-hub/Mentible/issues/221).
+7. **◑ Partial.** Book sharing (D11) — artifact-export path (tier 1) rides ADR-004 and
+   is **live**; the public-key per-book-DK tier (tier 2) is a *later* ticket, only if
+   live shared libraries land.
