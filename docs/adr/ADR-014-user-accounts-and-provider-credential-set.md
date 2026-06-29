@@ -279,7 +279,8 @@ the Open Decisions section are deliberately left to the decision-maker.
 5. **⏳ Deferred (depends on #4).** Provenance-driven degradation UX (D6) — only
    meaningful once sync lands. Folded into the plan above (Phase 5).
 6. **⏳ Not built (no version gate).** Rate limiting (D9) — designed as per-account
-   (IP fallback for the anonymous demo) but not yet gated in code.
+   (IP fallback for the anonymous demo) but not yet gated in code. Tracked:
+   [#221](https://github.com/wegofwd2020-hub/Mentible/issues/221).
 7. **◑ Partial.** Book sharing (D11) — artifact-export path (tier 1) rides ADR-004 and
    is **live**; the public-key per-book-DK tier (tier 2) is a *later* ticket, only if
    live shared libraries land.
