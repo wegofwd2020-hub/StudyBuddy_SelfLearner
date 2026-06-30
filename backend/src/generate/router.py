@@ -19,12 +19,14 @@ import json
 import uuid
 
 import redis.asyncio as redis
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from wegofwd_llm.registry import PROVIDER_REGISTRY, provenance
 
 from backend.config import settings
+from backend.src.accounts import repo as accounts_repo
 from backend.src.auth.deps import optional_user
 from backend.src.auth.principal import Principal
+from backend.src.billing import caps
 from backend.src.billing.eligibility import is_managed_eligible
 from backend.src.core.byok_envelope import encrypt_api_key, parse_master_key
 from backend.src.core.log_redaction import get_logger
@@ -79,6 +81,7 @@ def _idempotency_redis_key(request_id: uuid.UUID) -> str:
 async def submit_generate(
     body: GenerateRequest,
     background: BackgroundTasks,
+    request: Request,
     r: redis.Redis = Depends(get_redis),
     principal: Principal | None = Depends(optional_user),
 ) -> GenerateResponse:
@@ -112,11 +115,29 @@ async def submit_generate(
     # does not reveal allowlist membership). The managed key is OUR vault key, read
     # in the worker — it never enters this request or Redis.
     managed = body.api_key is None
-    if managed and not is_managed_eligible(principal, body.provider_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="an api_key is required for this request",
-        )
+    account_id = None
+    db_pool = getattr(request.app.state, "db", None)
+    if managed:
+        if not is_managed_eligible(principal, body.provider_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="an api_key is required for this request",
+            )
+        # Meter + cap (Phase 2) when the account store is available — it is for an
+        # authed managed user. Without it (no DB / demo path) managed runs unmetered.
+        if db_pool is not None and principal is not None:
+            async with db_pool.acquire() as conn:
+                account = await accounts_repo.get_or_create_account(
+                    conn, idp_sub=principal.sub, email=principal.email
+                )
+                account_id = account.id
+                # Pre-flight: refuse BEFORE spending if the fixed cap is already met.
+                if await caps.cap_exceeded(conn, account_id=account_id):
+                    log.info("managed_cap_exceeded", job_id=None, request_id=str(body.request_id))
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail="managed allowance exhausted; try again later or add your own key",
+                    )
 
     # ── 3. Fresh job ─────────────────────────────────────────────────────────
     job_id = uuid.uuid4()
@@ -164,6 +185,8 @@ async def submit_generate(
         provider_id=body.provider_id,
         model=body.model,
         managed=managed,
+        account_id=account_id,
+        db_pool=db_pool,
         redis_client=r,
     )
 

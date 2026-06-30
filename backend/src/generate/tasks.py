@@ -28,6 +28,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+import asyncpg
 import redis.asyncio as redis
 from wegofwd_llm.conformance import generate_validated
 from wegofwd_llm.contract import LLMRequest
@@ -36,6 +37,7 @@ from wegofwd_llm.registry import build_provider
 from wegofwd_llm.trust import PolicyBlock, engine_trust
 
 from backend.config import settings
+from backend.src.billing import pricing, usage_repo
 from backend.src.billing.vault import get_managed_key
 from backend.src.core.byok_envelope import decrypt_api_key, parse_master_key
 from backend.src.core.format_scan import lesson_warnings
@@ -147,6 +149,43 @@ async def _shred_envelope(r: redis.Redis, job_id: uuid.UUID) -> None:
         log.warning("envelope_shred_failed", job_id=str(job_id))
 
 
+async def _record_managed_usage(
+    db_pool: asyncpg.Pool | None,
+    account_id: uuid.UUID | None,
+    job_id: uuid.UUID,
+    usage: dict[str, Any] | None,
+) -> None:
+    """Best-effort server-side metering of a managed generation (ADR-005 D6, Phase 2).
+
+    No-ops unless there's a pool, an account, and observed usage (so the no-DB demo /
+    test path and BYOK jobs are unaffected). Prices the observed tokens and appends a
+    `usage_event`. Metering must NEVER fail the generation — any error is swallowed with
+    a warning (the lesson is already produced; under-counting is a known, logged gap).
+    """
+    if db_pool is None or account_id is None or usage is None:
+        return
+    try:
+        cost = pricing.cost_micros(
+            usage["provider"], usage["model"], usage["input_tokens"], usage["output_tokens"]
+        )
+        async with db_pool.acquire() as conn:
+            await usage_repo.record_usage(
+                conn,
+                account_id=account_id,
+                provider=usage["provider"],
+                model=usage["model"],
+                input_tokens=usage["input_tokens"],
+                output_tokens=usage["output_tokens"],
+                cost_micros=cost,
+                job_id=job_id,
+            )
+        log.info("managed_usage_recorded", job_id=str(job_id), cost_micros=cost)
+    except Exception:
+        # Counts/cost only — no key, no content — so a warning is safe, and metering
+        # is never allowed to fail a generation the user already paid (in tokens) for.
+        log.warning("managed_usage_record_failed", job_id=str(job_id))
+
+
 async def run_generation(
     *,
     job_id: uuid.UUID,
@@ -163,13 +202,17 @@ async def run_generation(
     provider_id: str = "anthropic",
     model: str | None = None,
     managed: bool = False,
+    account_id: uuid.UUID | None = None,
+    db_pool: asyncpg.Pool | None = None,
     redis_client: redis.Redis,
 ) -> None:
     """Execute the full generation pipeline for one job.
 
     `managed` selects the key source (ADR-005 D6): managed jobs use OUR vault key
-    (no Redis envelope), BYOK jobs decrypt the per-job envelope. Never raises — all
-    failures land in the job status row.
+    (no Redis envelope), BYOK jobs decrypt the per-job envelope. For a managed job with
+    an account + DB pool, observed usage is metered server-side (Phase 2) — best-effort,
+    so a metering failure never fails the generation. Never raises — all failures land
+    in the job status row.
     """
     log.info(
         "generation_started",
@@ -366,6 +409,11 @@ async def run_generation(
             count=len(format_warnings),
             rules=sorted({w["rule"] for w in format_warnings}),
         )
+
+    # Meter managed spend server-side (Phase 2) — best-effort, after a successful
+    # generation. BYOK jobs and the no-DB path are no-ops inside the helper.
+    if managed:
+        await _record_managed_usage(db_pool, account_id, job_id, usage)
 
     await _write_status(
         redis_client,

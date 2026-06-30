@@ -212,3 +212,86 @@ async def test_byok_key_not_promoted_to_managed(
     # The user's key was used, not the vault key; policy reflects BYOK.
     assert captured["api_key"] == known_test_api_key
     assert body["trust"]["policy"]["byok"] is True
+
+
+# ── Phase 2: the pre-flight cap gate ───────────────────────────────────────────
+
+
+class _FakePool:
+    """Minimal asyncpg.Pool stand-in: acquire() → async context manager → dummy conn."""
+
+    def acquire(self):
+        class _CM:
+            async def __aenter__(self):
+                return object()
+
+            async def __aexit__(self, *exc):
+                return False
+
+        return _CM()
+
+
+@pytest.mark.asyncio
+async def test_managed_cap_exceeded_returns_429(
+    client, fake_redis, managed_enabled, as_eligible_user, monkeypatch
+):
+    """When the account store is present and the fixed cap is already met, an eligible
+    managed request is refused 429 BEFORE a job is created (pre-flight)."""
+    from backend.main import app
+    from backend.src.accounts import repo as accounts_repo
+    from backend.src.billing import caps as caps_mod
+
+    class _Acct:
+        id = uuid.uuid4()
+
+    async def _get_or_create(conn, **kw):
+        return _Acct()
+
+    async def _exceeded(conn, **kw):
+        return True
+
+    monkeypatch.setattr(accounts_repo, "get_or_create_account", _get_or_create)
+    monkeypatch.setattr(caps_mod, "cap_exceeded", _exceeded)
+    app.state.db = _FakePool()
+    try:
+        submit = await client.post("/api/v1/generate", json=_managed_body())
+    finally:
+        app.state.db = None
+
+    assert submit.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_managed_under_cap_proceeds(
+    client, fake_redis, managed_enabled, as_eligible_user, monkeypatch
+):
+    """With the account store present but under the cap, the managed request proceeds."""
+    from backend.main import app
+    from backend.src.accounts import repo as accounts_repo
+    from backend.src.billing import caps as caps_mod
+
+    class _Acct:
+        id = uuid.uuid4()
+
+    async def _get_or_create(conn, **kw):
+        return _Acct()
+
+    async def _not_exceeded(conn, **kw):
+        return False
+
+    monkeypatch.setattr(accounts_repo, "get_or_create_account", _get_or_create)
+    monkeypatch.setattr(caps_mod, "cap_exceeded", _not_exceeded)
+    app.state.db = _FakePool()
+    try:
+        with patch(
+            "backend.src.generate.tasks.build_provider",
+            return_value=fake_provider(text=_FAKE_LESSON_JSON),
+        ):
+            submit = await client.post("/api/v1/generate", json=_managed_body())
+            assert submit.status_code == 202
+            body = await _wait_for_status(client, submit.json()["job_id"], "done")
+    finally:
+        app.state.db = None
+
+    assert body["status"] == "done"
+    assert body["trust"]["policy"]["byok"] is False
