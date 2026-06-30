@@ -21,7 +21,9 @@ from backend.tests.helpers import fake_provider
 from backend.tests.test_generate_e2e import _FAKE_LESSON_JSON, _wait_for_status
 
 # A fake but sk-ant--shaped managed key, so the redaction pattern also catches it.
-_MANAGED_KEY = "sk-ant-MANAGED_FAKE_company_key_DO_NOT_REPLACE_xxxxxxxx"
+# Deliberately short (suffix < 30 chars) so the "no real sk-ant- key" CI gate, which
+# flags sk-ant- + 30+ chars, doesn't trip on this fixture.
+_MANAGED_KEY = "sk-ant-MANAGED_FAKE_key_xxxxx"
 
 
 def _principal(sub: str = "staff-1", email: str | None = None) -> Principal:
@@ -70,9 +72,12 @@ def test_on_allowlist_by_sub_eligible(managed_enabled):
 
 def test_on_allowlist_by_email_case_insensitive(managed_enabled):
     # Email matched case-insensitively (sub not listed — email is the hit).
-    assert eligibility.is_managed_eligible(
-        _principal(sub="other", email="STAFF@example.com"), "anthropic"
-    ) is True
+    assert (
+        eligibility.is_managed_eligible(
+            _principal(sub="other", email="STAFF@example.com"), "anthropic"
+        )
+        is True
+    )
 
 
 def test_eligible_user_but_provider_not_managed(managed_enabled):
