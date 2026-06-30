@@ -113,6 +113,13 @@ class Settings(BaseSettings):
     managed_plan_subs: str = Field(
         default="", description="comma-separated internal managed-plan IdP subs; empty = none"
     )
+    # Phase 2 metering cap (ADR-005 D6). A single fixed managed cost cap, in micro-USD
+    # (1e-6 USD), over a rolling window — enough to prove the metering→cap loop before
+    # the per-plan allowance model (Phase 3). 0 ⇒ uncapped (metered but never refused;
+    # the safe default so managed works the moment a key + allowlist are set). Per-plan
+    # allowances replace this in Phase 3.
+    managed_period_cost_cap_micros: int = Field(default=0, ge=0)
+    managed_usage_window_days: int = Field(default=30, ge=1, le=366)
 
     # ── Account store (ADR-014 D2/D8) — Supabase Postgres via asyncpg ──────────
     # The account + per-provider credential-set DB. OPTIONAL, like identity: empty

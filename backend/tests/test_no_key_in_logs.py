@@ -338,6 +338,10 @@ async def test_managed_path_does_not_log_key(client, capsys, monkeypatch):
     app.dependency_overrides[optional_user] = lambda: Principal(
         sub="staff-1", email=None, issuer="iss"
     )
+    # Pin the (unmetered) no-DB managed path — a leaked pool on app.state.db from a
+    # DB-enabled test would otherwise make this hit the metering branch.
+    prior_db = getattr(app.state, "db", None)
+    app.state.db = None
 
     buffer, _ = _capture_log_output()
     try:
@@ -358,6 +362,7 @@ async def test_managed_path_does_not_log_key(client, capsys, monkeypatch):
             await asyncio.sleep(0.2)
     finally:
         app.dependency_overrides.pop(optional_user, None)
+        app.state.db = prior_db
 
     captured = capsys.readouterr()
     combined = buffer.getvalue() + captured.out + captured.err
