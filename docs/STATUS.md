@@ -5,11 +5,16 @@
 > **What's new since go-live:** account deletion now removes the Supabase identity
 > (ADR-022, opt-in/off-by-default), plus web/UX fixes — all live on prod. See
 > **"Release v0.2.0 (2026-06-28)"** just below.
-> **Last updated:** 2026-06-30 — backlog review + doc corrections (docs/tests only):
-> ADR-021 Everyone-Library build trigger settled (D8); ADR-022 prod posture decided
-> (service-role key stays **off**); trademark sweep refreshed; backlog re-prioritised
-> hygiene-first; **rate limiting (ADR-014 D9) corrected to BUILT** — the #221 "gap" was
-> a mis-file (the limiter shipped `fbd5aad`, 2026-06-16), now closed.
+> **Last updated:** 2026-06-30 — **Managed billing built end to end (ADR-005 D6, Phases
+> 1–6; PRs #236–#241)**: managed-key vault + `/generate` fork, server-side metering + caps
+> + spend ceiling, plans/entitlements, RevenueCat webhook → entitlement, client meter,
+> multi-provider, admin margin + rotation runbook — all **off by default** (BYOK stays the
+> only prod path); remaining = the owner's RevenueCat setup. See "Managed identity &
+> billing" below + `docs/MANAGED_BILLING_BUILD_PLAN.md`.
+> _Earlier 2026-06-30_ — backlog review + doc corrections: ADR-021 Everyone-Library build
+> trigger settled (D8); ADR-022 prod posture decided (service-role key stays **off**);
+> trademark sweep refreshed; backlog re-prioritised; **rate limiting (ADR-014 D9) corrected
+> to BUILT** — the #221 "gap" was a mis-file (`fbd5aad`, 2026-06-16), now closed.
 > _Earlier 2026-06-29_ — **docs reconciliation** (PRs #219/#220): CLAUDE.md + the
 > ADR-020 and ADR-014 follow-up tickets aligned with shipped reality; the deferred
 > **zero-knowledge sync build is now scoped** (`docs/SYNC_BUILD_PLAN.md`).
@@ -274,9 +279,29 @@ The arc: **accounts → go-live → trust → hosted web app + deploy pipeline.*
 
 ### Managed identity & billing (ADR-005 pulled these to MVP)
 - **Accounts/auth are DONE** (email + **Google**; ADR-014 — built & deployed, sign-in
-  live). **Still not built:** per-user **usage metering Phase 2**, **plan caps**, and
-  the **managed-key vault** path (ADR-005 D6 / ADR-020 #6). The **BYOK** path is the
-  one in production today.
+  live).
+- **Managed billing (ADR-005 D6 / ADR-020 #6) is BUILT — Phases 1–6** (2026-06-30, PRs
+  #236–#241; `backend/src/billing/`; scope in
+  [`docs/MANAGED_BILLING_BUILD_PLAN.md`](MANAGED_BILLING_BUILD_PLAN.md)). End to end:
+  - **Managed-key vault + `/generate` fork** — an authed, entitled (or staff-allowlisted)
+    caller generates with **no BYOK key** on OUR vault key; BYOK is byte-for-byte unchanged
+    and never promoted (ADR-014 D3); the managed key is never in Redis/logs (extends the
+    no-key gate).
+  - **Server-side metering + caps** — `usage_event` (migration 0005) + price table → cost;
+    pre-flight **429** over the cap; a hard per-account **spend ceiling (O7)** backstops OUR
+    spend even on an unlimited plan, with a `managed_spend_alarm`.
+  - **Plans + entitlements** (migration 0006) drive eligibility + allowance; an operator
+    grants via `PUT/GET /api/v1/admin/users/{sub}/entitlement` (audited).
+  - **RevenueCat webhook → entitlement** (`POST /api/v1/billing/revenuecat/webhook`,
+    auth-checked) keeps subscriptions in sync; **client meter** via
+    `GET /api/v1/billing/managed-status` + the mobile `ManagedPlanCard` (read-only).
+  - **Multi-provider** (Anthropic/OpenAI/Groq/Gemini, ToS-cleared O4 — Gemini paid-only) +
+    admin **margin** `GET /api/v1/admin/billing/usage-summary` + rotation runbook
+    (`docs/MANAGED_KEY_ROTATION.md`).
+  - **OFF by default** (no `MANAGED_*`/`REVENUECAT_*` env set anywhere) — **BYOK** remains
+    the only path in production. **Remaining = owner RevenueCat setup** (RC project/products,
+    set the env, dashboard webhook, client `Purchases.logIn(sub)`, sandbox-verify), then the
+    deferred RC-dependent UI (plan picker/purchase + per-provider managed/BYOK toggle).
 
 ### Backend hardening
 - **Rate limiting** (ADR-014 D9) — **BUILT** (`fbd5aad`, 2026-06-16). Per-identity
@@ -333,8 +358,8 @@ formally measured (the poll timeout was raised to 600 s for slow generations).
 
 ## Next up
 
-_Re-prioritised 2026-06-30 (hygiene-first): clear the cheap, time-boxed, and
-prerequisite items before the big managed-billing build. Rationale in each entry._
+_Re-prioritised 2026-06-30. The big-ticket item (managed billing) has since been **built**
+(Phases 1–6) and moved to "Done"; what remains is genuinely deferrable. Rationale per item._
 
 **Tier 1 — cheap, high-consequence, time-boxed:**
 
@@ -352,38 +377,23 @@ prerequisite items before the big managed-billing build. Rationale in each entry
    without it, and the signal it may already be blown (poll TTL 600 s; some runs slow)
    makes the spike worth it. Tells us whether a fix-item even needs to exist.
 
-**Tier 2 — big strategic build (revenue lever):**
+**Tier 2 — genuinely deferrable:**
 
-3. **Managed billing (ADR-005 D6)** — usage metering Phase 2, plan caps, and the
-   **managed-key vault** (the half of ADR-005 / ADR-020 #6 not yet built). The "subscribe
-   and it just works" default path; biggest business value but biggest effort. **Now
-   scoped:** [`docs/MANAGED_BILLING_BUILD_PLAN.md`](MANAGED_BILLING_BUILD_PLAN.md) — vault
-   + managed generation fork + server-side metering (P2) + plans/entitlements/caps +
-   Stripe billing; 7 phases (Phase 0 = blocking decisions). _Key framing:_ the "vault" is
-   small (our few company keys, not per-user) — the hard parts are **metering, plans, and
-   payments**. The two **blocking** decisions are now **settled (2026-06-30):** O1 →
-   **RevenueCat** (Web Billing on Stripe now; unifies future Play/App Store), O4 → **all
-   four providers cleared for managed** as a value-add app on commercial accounts (Gemini
-   paid-quota-only; managed content-privacy disclosure required). Remaining are
-   non-blocking design choices (O2 overage, O3 vault mechanism, O5 allowance basis, …).
-   Per-request **rate limiting already exists** (ADR-014 D9), so managed adds **per-plan
-   caps** on top, not throttling from scratch.
-
-> _Removed from this list 2026-06-30:_ the former Tier-2 "rate-limiting gap (#221)" was
-> a **mis-file** — the per-identity limiter shipped 2026-06-16 (`fbd5aad`); #221 was
-> filed 13 days later and is closed as already-implemented. See "Backend hardening".
-
-**Tier 4 — genuinely deferrable:**
-
-4. **Library sync (ADR-014 O2)** — zero-knowledge cloud sync (device-local only today).
+3. **Library sync (ADR-014 O2)** — zero-knowledge cloud sync (device-local only today).
    **Scoped:** `docs/SYNC_BUILD_PLAN.md` (D10 envelope crypto, Supabase schema/RLS,
    `/api/v1/sync/*`, recovery, 6-phase build); build deferred past v1.1 (O3). No urgency.
-5. **Pramana slice** (when prioritised): the package builder + signing for ADR-011 —
+4. **Pramana slice** (when prioritised): the package builder + signing for ADR-011 —
    cross-product, Proposed/contract-only, no pull from the Pramana side yet.
 
-**Resolved 2026-06-30 (off this list):** Everyone Library (ADR-021) build trigger
-settled (D8); `vm.overcommit_memory=1` applied on the host; ADR-022 prod posture decided
-(stays OFF). Prod backend remains current on `main`@`add2807` (no backend delta since;
+> _Removed from this list 2026-06-30:_ (a) the former Tier-2 "rate-limiting gap (#221)"
+> was a **mis-file** — the limiter shipped 2026-06-16 (`fbd5aad`); #221 closed. (b)
+> **Managed billing (ADR-005 D6)** is now **BUILT (Phases 1–6, PRs #236–#241)** — see
+> "Managed identity & billing" above; the only remaining work is the **owner's RevenueCat
+> setup** + the deferred RC-dependent UI, not a backend build.
+
+**Resolved 2026-06-30 (off this list):** **Managed billing Phases 1–6 built** (#236–#241);
+Everyone Library (ADR-021) build trigger settled (D8); `vm.overcommit_memory=1` applied on
+the host; ADR-022 prod posture decided (stays OFF). Prod backend remains current on `main`@`add2807` (no backend delta since;
 re-run the `Plans/PROD_BACKEND_REFRESH_TO_MAIN.md` root block only when a real
 backend/compiler change ships). HelpHint (SBQ-UI-003) shipped on the Account screen;
 extending its `?` hints elsewhere is a nice-to-have, not tracked as a backlog tier.
