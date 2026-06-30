@@ -32,6 +32,22 @@ def _principal(sub: str = "staff-1", email: str | None = None) -> Principal:
     return Principal(sub=sub, email=email, issuer="iss")
 
 
+@pytest.fixture(autouse=True)
+def _isolate_db_state():
+    """Isolate every test here from a leaked `app.state.db` pool.
+
+    The DB-enabled CI job runs other tests that leave a (possibly closed) real pool on
+    `app.state.db`; the managed branch reads it. Default it to None (the unmetered, no-DB
+    managed path most of these tests intend); the cap tests set their own fake pool in the
+    body. Restored on teardown."""
+    from backend.main import app
+
+    prior = getattr(app.state, "db", None)
+    app.state.db = None
+    yield
+    app.state.db = prior
+
+
 # ── Unit: vault (the wegofwd-billing mechanism) ────────────────────────────────
 
 
@@ -113,25 +129,16 @@ def _managed_body(**overrides) -> dict:
 
 @pytest.fixture
 def as_eligible_user():
-    """Override optional_user so the request resolves to an authed, eligible principal,
-    and pin `app.state.db` to a known value for the duration.
-
-    The managed branch reads `app.state.db` to meter/cap. In the DB-enabled CI job a
-    real pool can be left on `app.state` (and even closed) by another test, which would
-    make these tests hit it nondeterministically. Default to None (the unmetered managed
-    path these tests intend); the cap tests set their own fake pool inside the body.
-    """
+    """Override optional_user so the request resolves to an authed, eligible principal.
+    (`app.state.db` isolation is handled by the autouse `_isolate_db_state`.)"""
     from backend.main import app
     from backend.src.auth.deps import optional_user
 
     app.dependency_overrides[optional_user] = lambda: _principal(sub="staff-1")
-    prior_db = getattr(app.state, "db", None)
-    app.state.db = None
     try:
         yield
     finally:
         app.dependency_overrides.pop(optional_user, None)
-        app.state.db = prior_db
 
 
 @pytest.mark.asyncio
