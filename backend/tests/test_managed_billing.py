@@ -111,15 +111,25 @@ def _managed_body(**overrides) -> dict:
 
 @pytest.fixture
 def as_eligible_user():
-    """Override optional_user so the request resolves to an authed, eligible principal."""
+    """Override optional_user so the request resolves to an authed, eligible principal,
+    and pin `app.state.db` to a known value for the duration.
+
+    The managed branch reads `app.state.db` to meter/cap. In the DB-enabled CI job a
+    real pool can be left on `app.state` (and even closed) by another test, which would
+    make these tests hit it nondeterministically. Default to None (the unmetered managed
+    path these tests intend); the cap tests set their own fake pool inside the body.
+    """
     from backend.main import app
     from backend.src.auth.deps import optional_user
 
     app.dependency_overrides[optional_user] = lambda: _principal(sub="staff-1")
+    prior_db = getattr(app.state, "db", None)
+    app.state.db = None
     try:
         yield
     finally:
         app.dependency_overrides.pop(optional_user, None)
+        app.state.db = prior_db
 
 
 @pytest.mark.asyncio
